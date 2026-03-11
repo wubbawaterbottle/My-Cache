@@ -131,7 +131,7 @@ body {
 // Talks to Google Sheets via Apps Script Web App
 // ============================================================
 
-const API_URL = "https://script.google.com/macros/s/AKfycbytmhecyWTzRoG3q3M_uDf6GNnLubuPuchfhqQWbMRO_2gnaIjuKM8rhWfV-MEXeKe_dA/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbxss3dtgmpkZC5ZTTQR8xiCI07eku-vH1uQsrBJcMNZb7I0PC1EOKlnVc7jxgs-8jNBow/exec";
 
 const MODES = {
   all: { label: "All Tasks", icon: "◉", color: "#c4b5a0", desc: "Everything" },
@@ -173,8 +173,9 @@ let state = {
 // ============================================================
 async function apiGet(action) {
   try {
-    const r = await fetch(API_URL + "?action=" + action);
-    return await r.json();
+    const r = await fetch(API_URL + "?action=" + action, { redirect: "follow" });
+    const text = await r.text();
+    try { return JSON.parse(text); } catch(e) { return { error: "Invalid response: " + text.substring(0, 100) }; }
   } catch (e) { console.error("API GET error:", e); return { error: e.toString() }; }
 }
 
@@ -182,11 +183,22 @@ async function apiPost(payload) {
   try {
     const r = await fetch(API_URL, {
       method: "POST",
-      headers: { "Content-Type": "text/plain" },
+      redirect: "follow",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
       body: JSON.stringify(payload),
     });
-    return await r.json();
-  } catch (e) { console.error("API POST error:", e); return { error: e.toString() }; }
+    const text = await r.text();
+    try { return JSON.parse(text); } catch(e) { return { error: "Invalid response: " + text.substring(0, 100) }; }
+  } catch (e) {
+    // If fetch fails due to CORS, try GET-based workaround
+    console.warn("POST failed, trying GET workaround:", e);
+    try {
+      const encoded = encodeURIComponent(JSON.stringify(payload));
+      const r = await fetch(API_URL + "?payload=" + encoded, { redirect: "follow" });
+      const text = await r.text();
+      try { return JSON.parse(text); } catch(e2) { return { error: "Invalid response" }; }
+    } catch (e2) { return { error: e2.toString() }; }
+  }
 }
 
 function showSave(msg, ok) {
