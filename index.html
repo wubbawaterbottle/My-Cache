@@ -131,7 +131,7 @@ body {
 // Talks to Google Sheets via Apps Script Web App
 // ============================================================
 
-const API_URL = "https://script.google.com/macros/s/AKfycbxss3dtgmpkZC5ZTTQR8xiCI07eku-vH1uQsrBJcMNZb7I0PC1EOKlnVc7jxgs-8jNBow/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbxz4KvkRNq643aLEQjPShVd3Z7PDXes7askgKbyA658HE-b659oTAw-YVG_bSmWRItk4Q/exec";
 
 const MODES = {
   all: { label: "All Tasks", icon: "◉", color: "#c4b5a0", desc: "Everything" },
@@ -171,28 +171,42 @@ let state = {
 // ============================================================
 // API CALLS
 // ============================================================
+function apiCall(params) {
+  return new Promise((resolve) => {
+    const callbackName = "jsonpCallback_" + Date.now() + "_" + Math.floor(Math.random()*10000);
+    const timeout = setTimeout(() => {
+      delete window[callbackName];
+      if (script.parentNode) script.parentNode.removeChild(script);
+      resolve({ error: "Request timed out" });
+    }, 15000);
+
+    window[callbackName] = function(data) {
+      clearTimeout(timeout);
+      delete window[callbackName];
+      if (script.parentNode) script.parentNode.removeChild(script);
+      resolve(data);
+    };
+
+    const url = API_URL + "?" + params + "&callback=" + callbackName;
+    const script = document.createElement("script");
+    script.src = url;
+    script.onerror = function() {
+      clearTimeout(timeout);
+      delete window[callbackName];
+      if (script.parentNode) script.parentNode.removeChild(script);
+      resolve({ error: "Network error" });
+    };
+    document.body.appendChild(script);
+  });
+}
+
 async function apiGet(action) {
-  try {
-    const r = await fetch(API_URL + "?action=" + action, { method: "GET", redirect: "follow", mode: "cors" });
-    const text = await r.text();
-    try { return JSON.parse(text); } catch(e) { return { error: "Parse error: " + text.substring(0, 200) }; }
-  } catch (e) {
-    console.error("API GET error:", e);
-    return { error: e.toString() };
-  }
+  return apiCall("action=" + action);
 }
 
 async function apiPost(payload) {
-  // Use GET with payload parameter — most reliable for Google Apps Script cross-origin
-  try {
-    const encoded = encodeURIComponent(JSON.stringify(payload));
-    const r = await fetch(API_URL + "?payload=" + encoded, { method: "GET", redirect: "follow", mode: "cors" });
-    const text = await r.text();
-    try { return JSON.parse(text); } catch(e) { return { error: "Parse error: " + text.substring(0, 200) }; }
-  } catch (e) {
-    console.error("API POST error:", e);
-    return { error: e.toString() };
-  }
+  const encoded = encodeURIComponent(JSON.stringify(payload));
+  return apiCall("payload=" + encoded);
 }
 
 function showSave(msg, ok) {
