@@ -173,31 +173,25 @@ let state = {
 // ============================================================
 async function apiGet(action) {
   try {
-    const r = await fetch(API_URL + "?action=" + action, { redirect: "follow" });
+    const r = await fetch(API_URL + "?action=" + action, { method: "GET", redirect: "follow", mode: "cors" });
     const text = await r.text();
-    try { return JSON.parse(text); } catch(e) { return { error: "Invalid response: " + text.substring(0, 100) }; }
-  } catch (e) { console.error("API GET error:", e); return { error: e.toString() }; }
+    try { return JSON.parse(text); } catch(e) { return { error: "Parse error: " + text.substring(0, 200) }; }
+  } catch (e) {
+    console.error("API GET error:", e);
+    return { error: e.toString() };
+  }
 }
 
 async function apiPost(payload) {
+  // Use GET with payload parameter — most reliable for Google Apps Script cross-origin
   try {
-    const r = await fetch(API_URL, {
-      method: "POST",
-      redirect: "follow",
-      headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify(payload),
-    });
+    const encoded = encodeURIComponent(JSON.stringify(payload));
+    const r = await fetch(API_URL + "?payload=" + encoded, { method: "GET", redirect: "follow", mode: "cors" });
     const text = await r.text();
-    try { return JSON.parse(text); } catch(e) { return { error: "Invalid response: " + text.substring(0, 100) }; }
+    try { return JSON.parse(text); } catch(e) { return { error: "Parse error: " + text.substring(0, 200) }; }
   } catch (e) {
-    // If fetch fails due to CORS, try GET-based workaround
-    console.warn("POST failed, trying GET workaround:", e);
-    try {
-      const encoded = encodeURIComponent(JSON.stringify(payload));
-      const r = await fetch(API_URL + "?payload=" + encoded, { redirect: "follow" });
-      const text = await r.text();
-      try { return JSON.parse(text); } catch(e2) { return { error: "Invalid response" }; }
-    } catch (e2) { return { error: e2.toString() }; }
+    console.error("API POST error:", e);
+    return { error: e.toString() };
   }
 }
 
