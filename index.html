@@ -65,21 +65,66 @@ body {
 .panel { background: var(--bg2); border: 1px solid var(--border2); border-radius: 8px; padding: 16px; margin-bottom: 16px; }
 .input { width: 100%; background: var(--bg); border: 1px solid var(--border2); color: var(--text2); padding: 10px 12px; border-radius: 6px; font-size: 15px; font-family: var(--serif); margin-bottom: 10px; outline: none; box-sizing: border-box; }
 .form-row { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+.form-row-sliders { display: flex; gap: 12px; margin-bottom: 10px; flex-wrap: wrap; width: 100%; }
 .select { background: var(--bg); border: 1px solid var(--border2); color: var(--text); padding: 6px 10px; border-radius: 4px; font-size: 12px; font-family: var(--mono); }
-.slider-label { font-size: 11px; color: #7a7568; font-family: var(--mono); display: flex; align-items: center; gap: 6px; }
-.slider { width: 60px; accent-color: var(--amber); }
+.slider-label { font-size: 13px; color: #7a7568; font-family: var(--mono); display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 140px; }
+.slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 8px;
+  background: var(--border2);
+  border-radius: 4px;
+  outline: none;
+  cursor: pointer;
+  margin: 8px 0;
+  touch-action: none;
+}
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--amber);
+  cursor: pointer;
+  border: 2px solid var(--bg);
+  box-shadow: 0 0 4px rgba(0,0,0,0.4);
+}
+.slider::-moz-range-track {
+  height: 8px;
+  background: var(--border2);
+  border-radius: 4px;
+  border: none;
+}
+.slider::-moz-range-thumb {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--amber);
+  cursor: pointer;
+  border: 2px solid var(--bg);
+  box-shadow: 0 0 4px rgba(0,0,0,0.4);
+}
+.slider:active::-webkit-slider-thumb { transform: scale(1.2); }
+.slider:active::-moz-range-thumb { transform: scale(1.2); }
 .btn-submit { width: 100%; background: var(--amber); border: none; color: var(--bg); padding: 10px; border-radius: 6px; font-size: 15px; cursor: pointer; font-family: var(--serif); font-weight: 600; }
 
 .add-cat-row { display: flex; gap: 8px; margin-bottom: 12px; align-items: center; }
 .add-cat-row .input { margin-bottom: 0; flex: 1; }
 .btn-cat-save { background: var(--amber); border: none; color: var(--bg); padding: 10px 16px; border-radius: 6px; font-size: 13px; cursor: pointer; font-family: var(--serif); font-weight: 600; flex-shrink: 0; }
 
-.manage-cats { background: var(--bg2); border: 1px solid var(--border2); border-radius: 8px; padding: 14px; margin-bottom: 14px; }
-.manage-cats-title { font-size: 12px; color: var(--dim); margin-bottom: 8px; font-family: var(--mono); text-transform: uppercase; letter-spacing: 2px; }
-.manage-cats-list { display: flex; gap: 6px; flex-wrap: wrap; }
-.btn-remove-cat { background: transparent; border: 1px solid var(--redborder); color: var(--red); padding: 4px 10px; border-radius: 4px; font-size: 11px; cursor: pointer; font-family: var(--mono); }
-.btn-remove-cat.disabled { opacity: 0.4; cursor: not-allowed; }
-.manage-cats-note { font-size: 10px; color: var(--dim3); margin-top: 6px; font-family: var(--mono); }
+.edit-cats { background: var(--bg2); border: 1px solid var(--border2); border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+.edit-cats-title { font-size: 12px; color: var(--dim); margin-bottom: 12px; font-family: var(--mono); text-transform: uppercase; letter-spacing: 2px; }
+.edit-cats-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+.edit-cat-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: var(--bg); border-radius: 6px; border: 1px solid var(--border); }
+.edit-cat-name { font-size: 13px; color: var(--text2); font-family: var(--serif); }
+.edit-cat-count { font-size: 10px; color: var(--dim); font-family: var(--mono); margin-left: 8px; }
+.btn-remove-cat { background: transparent; border: none; color: var(--red); padding: 4px 8px; font-size: 14px; cursor: pointer; opacity: 0.6; transition: opacity 0.15s; }
+.btn-remove-cat:hover { opacity: 1; }
+.btn-remove-cat.disabled { opacity: 0.15; cursor: not-allowed; }
+.edit-cats-divider { height: 1px; background: var(--border); margin: 4px 0 14px 0; }
+.edit-cats-add-label { font-size: 11px; color: var(--dim); font-family: var(--mono); margin-bottom: 6px; }
 
 .done-section { background: #1e1b17; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
 .done-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
@@ -155,8 +200,7 @@ let state = {
   filterCat: "all",
   showAdd: false,
   showDone: false,
-  showNewCat: false,
-  showManageCats: false,
+  showEditCats: false,
   expandedId: null,
   editingId: null,
   editData: null,
@@ -215,8 +259,23 @@ function showSave(msg, ok) {
   setTimeout(() => { state.saveStatus = ""; render(); }, ok ? 1500 : 3000);
 }
 
+// Background sync — silently refreshes data from Sheet
+async function bgSync() {
+  try {
+    const data = await apiGet("getAll");
+    if (!data.error) {
+      state.tasks = data.tasks || [];
+      state.doneTasks = data.done || [];
+      if (data.settings && data.settings.categories) {
+        state.categories = data.settings.categories.split(",").map(s => s.trim()).filter(Boolean);
+      }
+      render();
+    }
+  } catch(e) {}
+}
+
 // ============================================================
-// DATA OPERATIONS
+// DATA OPERATIONS (optimistic — UI updates instantly)
 // ============================================================
 async function loadAll() {
   const data = await apiGet("getAll");
@@ -239,59 +298,92 @@ async function loadAll() {
 async function addTask() {
   const t = state.newTask;
   if (!t.title.trim()) return;
-  const result = await apiPost({ action: "addTask", task: t });
-  if (result.error) { showSave("Error: " + result.error, false); return; }
-  showSave("Saved ✓", true);
+  // Optimistic: add to UI immediately
+  const tempId = "temp_" + Date.now();
+  const priority = ((t.valuable + t.urgency) / 2);
+  state.tasks.push({ id: tempId, title: t.title, category: t.category, timeline: t.timeline, priority: Math.round(priority*10)/10, valuable: t.valuable, urgency: t.urgency, mode: t.mode });
   state.newTask = { title: "", category: state.categories[0] || "General", timeline: "This Quarter", valuable: 3, urgency: 3, mode: "body" };
   state.showAdd = false;
-  await loadAll();
+  showSave("Saving...", true);
+  // Sync in background
+  const result = await apiPost({ action: "addTask", task: t });
+  if (result.error) { showSave("Error: " + result.error, false); }
+  else { showSave("Saved ✓", true); }
+  bgSync();
 }
 
 async function completeTask(id) {
-  const result = await apiPost({ action: "completeTask", id });
-  if (result.error) { showSave("Error", false); return; }
-  showSave("Done ✓", true);
+  // Optimistic: move to done immediately
+  const task = state.tasks.find(t => t.id === id);
+  if (task) {
+    state.tasks = state.tasks.filter(t => t.id !== id);
+    state.doneTasks.unshift({ ...task, completedAt: new Date().toISOString() });
+  }
   state.expandedId = null;
   state.editingId = null;
-  await loadAll();
+  showSave("Done ✓", true);
+  // Sync in background
+  const result = await apiPost({ action: "completeTask", id });
+  if (result.error) { showSave("Error — reload", false); }
+  bgSync();
 }
 
 async function deleteTask(id) {
-  const result = await apiPost({ action: "deleteTask", id });
-  if (result.error) { showSave("Error", false); return; }
-  showSave("Deleted", true);
+  // Optimistic: remove immediately
+  state.tasks = state.tasks.filter(t => t.id !== id);
   state.expandedId = null;
   state.editingId = null;
-  await loadAll();
+  showSave("Deleted", true);
+  const result = await apiPost({ action: "deleteTask", id });
+  if (result.error) { showSave("Error — reload", false); }
+  bgSync();
 }
 
 async function saveEdit() {
   if (!state.editData) return;
-  const result = await apiPost({ action: "updateTask", task: state.editData });
-  if (result.error) { showSave("Error", false); return; }
-  showSave("Saved ✓", true);
+  // Optimistic: update in list immediately
+  const ed = state.editData;
+  const priority = ((ed.valuable + ed.urgency) / 2);
+  ed.priority = Math.round(priority * 10) / 10;
+  state.tasks = state.tasks.map(t => t.id === ed.id ? { ...ed } : t);
   state.editingId = null;
   state.editData = null;
-  await loadAll();
+  showSave("Saving...", true);
+  const result = await apiPost({ action: "updateTask", task: ed });
+  if (result.error) { showSave("Error", false); }
+  else { showSave("Saved ✓", true); }
+  bgSync();
 }
 
 async function reinstateTask(id) {
-  const result = await apiPost({ action: "reinstateTask", id });
-  if (result.error) { showSave("Error", false); return; }
-  showSave("Reinstated ✓", true);
+  // Optimistic: move back immediately
+  const task = state.doneTasks.find(t => t.id === id);
+  if (task) {
+    state.doneTasks = state.doneTasks.filter(t => t.id !== id);
+    state.tasks.push({ ...task, completedAt: undefined });
+  }
   state.expandedDoneId = null;
-  await loadAll();
+  showSave("Reinstated ✓", true);
+  const result = await apiPost({ action: "reinstateTask", id });
+  if (result.error) { showSave("Error — reload", false); }
+  bgSync();
 }
 
 async function deleteDone(id) {
-  const result = await apiPost({ action: "deleteDone", id });
-  if (result.error) { showSave("Error", false); return; }
-  showSave("Deleted", true);
+  // Optimistic
+  state.doneTasks = state.doneTasks.filter(t => t.id !== id);
   state.expandedDoneId = null;
-  await loadAll();
+  showSave("Deleted", true);
+  const result = await apiPost({ action: "deleteDone", id });
+  if (result.error) { showSave("Error", false); }
+  bgSync();
 }
 
 async function clearDone() {
+  // Optimistic
+  state.doneTasks = [];
+  state.expandedDoneId = null;
+  showSave("Cleared ✓", true);
   const result = await apiPost({ action: "clearDone" });
   if (result.error) { showSave("Error", false); return; }
   showSave("Cleared ✓", true);
@@ -307,7 +399,6 @@ async function addCategory() {
   if (result.error) { showSave("Error", false); return; }
   state.categories = nc;
   state.newCatName = "";
-  state.showNewCat = false;
   showSave("Added ✓", true);
   render();
 }
@@ -355,8 +446,7 @@ function groupByTimeline(tasks) {
 function closeAllPanels(except) {
   if (except !== "add") state.showAdd = false;
   if (except !== "done") state.showDone = false;
-  if (except !== "newCat") state.showNewCat = false;
-  if (except !== "manageCats") state.showManageCats = false;
+  if (except !== "editCats") state.showEditCats = false;
 }
 
 // ============================================================
@@ -403,23 +493,24 @@ function render() {
   html += '<div class="top-bar">';
   html += `<button class="btn-add" onclick="closeAllPanels('add');state.showAdd=!state.showAdd;render()">${state.showAdd?"✕ Cancel":"+ Add Task"}</button>`;
   html += `<button class="btn-done" onclick="closeAllPanels('done');state.showDone=!state.showDone;state.expandedDoneId=null;render()">${state.showDone?"Hide Done":"Done ("+state.doneTasks.length+")"}</button>`;
-  html += `<button class="btn-cat" onclick="closeAllPanels('newCat');state.showNewCat=!state.showNewCat;render()">${state.showNewCat?"✕":"+ Cat"}</button>`;
-  html += `<button class="btn-cat" onclick="closeAllPanels('manageCats');state.showManageCats=!state.showManageCats;render()">${state.showManageCats?"✕":"– Cat"}</button>`;
+  html += `<button class="btn-cat" onclick="closeAllPanels('editCats');state.showEditCats=!state.showEditCats;render()">${state.showEditCats?"✕ Close":"Edit Categories"}</button>`;
   html += '</div>';
 
-  // Add category
-  if (state.showNewCat) {
-    html += `<div class="add-cat-row"><input class="input" id="newCatInput" placeholder="New category name" value="${esc(state.newCatName)}" oninput="state.newCatName=this.value" onkeydown="if(event.key==='Enter')addCategory()"><button class="btn-cat-save" onclick="addCategory()">Add</button></div>`;
-  }
-
-  // Manage categories
-  if (state.showManageCats) {
-    html += '<div class="manage-cats"><div class="manage-cats-title">Remove a category</div><div class="manage-cats-list">';
+  // Edit Categories panel
+  if (state.showEditCats) {
+    html += '<div class="edit-cats">';
+    html += '<div class="edit-cats-title">Categories</div>';
+    html += '<div class="edit-cats-list">';
     state.categories.forEach(c => {
-      const inUse = state.tasks.some(t => t.category === c) || state.doneTasks.some(t => t.category === c);
-      html += `<button class="btn-remove-cat ${inUse?"disabled":""}" onclick="${inUse?"":"removeCategory('"+esc(c)+"')"}">✕ ${esc(c)}</button>`;
+      const count = state.tasks.filter(t => t.category === c).length;
+      const inUse = count > 0 || state.doneTasks.some(t => t.category === c);
+      html += `<div class="edit-cat-item"><div><span class="edit-cat-name">${esc(c)}</span><span class="edit-cat-count">${count} task${count!==1?"s":""}</span></div><button class="btn-remove-cat ${inUse?"disabled":""}" onclick="${inUse?"":"removeCategory('"+esc(c)+"')"}" title="${inUse?"In use — reassign tasks first":"Remove category"}">✕</button></div>`;
     });
-    html += '</div><div class="manage-cats-note">Greyed out = still used by tasks</div></div>';
+    html += '</div>';
+    html += '<div class="edit-cats-divider"></div>';
+    html += '<div class="edit-cats-add-label">Add new category</div>';
+    html += `<div class="add-cat-row"><input class="input" id="newCatInput" placeholder="Category name" value="${esc(state.newCatName)}" oninput="state.newCatName=this.value" onkeydown="if(event.key==='Enter')addCategory()"><button class="btn-cat-save" onclick="addCategory()">Add</button></div>`;
+    html += '</div>';
   }
 
   // Add task form
@@ -430,9 +521,9 @@ function render() {
     html += `<select class="select" onchange="state.newTask.category=this.value">${state.categories.map(c=>`<option value="${esc(c)}" ${state.newTask.category===c?"selected":""}>${esc(c)}</option>`).join("")}</select>`;
     html += `<select class="select" onchange="state.newTask.timeline=this.value">${TIMELINES.map(t=>`<option value="${t}" ${state.newTask.timeline===t?"selected":""}>${t}</option>`).join("")}</select>`;
     html += `<select class="select" onchange="state.newTask.mode=this.value"><option value="body" ${state.newTask.mode==="body"?"selected":""}>⚡ Body</option><option value="focus" ${state.newTask.mode==="focus"?"selected":""}>✦ Focus</option><option value="work" ${state.newTask.mode==="work"?"selected":""}>◆ Work</option></select>`;
-    html += '</div><div class="form-row">';
-    html += `<label class="slider-label">Value: ${state.newTask.valuable}<input type="range" class="slider" min="0" max="10" value="${state.newTask.valuable}" oninput="state.newTask.valuable=+this.value;render()"></label>`;
-    html += `<label class="slider-label">Urgency: ${state.newTask.urgency}<input type="range" class="slider" min="0" max="10" value="${state.newTask.urgency}" oninput="state.newTask.urgency=+this.value;render()"></label>`;
+    html += '</div><div class="form-row-sliders">';
+    html += `<label class="slider-label">Value: ${state.newTask.valuable}<input type="range" class="slider" min="0" max="10" value="${state.newTask.valuable}" oninput="state.newTask.valuable=+this.value;this.nextElementSibling||0;render()" step="1"></label>`;
+    html += `<label class="slider-label">Urgency: ${state.newTask.urgency}<input type="range" class="slider" min="0" max="10" value="${state.newTask.urgency}" oninput="state.newTask.urgency=+this.value;render()" step="1"></label>`;
     html += '</div>';
     html += '<button class="btn-submit" onclick="addTask()">Add to Cache</button>';
     html += '</div>';
@@ -483,9 +574,9 @@ function render() {
         html += `<select class="select" onchange="state.editData.category=this.value">${state.categories.map(c=>`<option value="${esc(c)}" ${ed.category===c?"selected":""}>${esc(c)}</option>`).join("")}</select>`;
         html += `<select class="select" onchange="state.editData.timeline=this.value">${TIMELINES.map(t=>`<option value="${t}" ${ed.timeline===t?"selected":""}>${t}</option>`).join("")}</select>`;
         html += `<select class="select" onchange="state.editData.mode=this.value"><option value="body" ${ed.mode==="body"?"selected":""}>⚡ Body</option><option value="focus" ${ed.mode==="focus"?"selected":""}>✦ Focus</option><option value="work" ${ed.mode==="work"?"selected":""}>◆ Work</option></select>`;
-        html += '</div><div class="form-row">';
-        html += `<label class="slider-label">Value: ${ed.valuable}<input type="range" class="slider" min="0" max="10" value="${ed.valuable}" oninput="state.editData.valuable=+this.value;render()"></label>`;
-        html += `<label class="slider-label">Urgency: ${ed.urgency}<input type="range" class="slider" min="0" max="10" value="${ed.urgency}" oninput="state.editData.urgency=+this.value;render()"></label>`;
+        html += '</div><div class="form-row-sliders">';
+        html += `<label class="slider-label">Value: ${ed.valuable}<input type="range" class="slider" min="0" max="10" value="${ed.valuable}" oninput="state.editData.valuable=+this.value;render()" step="1"></label>`;
+        html += `<label class="slider-label">Urgency: ${ed.urgency}<input type="range" class="slider" min="0" max="10" value="${ed.urgency}" oninput="state.editData.urgency=+this.value;render()" step="1"></label>`;
         html += '</div>';
         html += `<div class="task-actions"><button class="btn-save-edit" onclick="event.stopPropagation();saveEdit()">Save</button><button class="btn-cancel-edit" onclick="event.stopPropagation();state.editingId=null;state.editData=null;render()">Cancel</button><button class="btn-delete" style="margin-left:auto" onclick="event.stopPropagation();deleteTask('${task.id}')">Delete</button></div>`;
         html += '</div>';
@@ -506,7 +597,7 @@ function render() {
 
   // Auto-focus inputs
   if (state.showAdd) { const el = document.getElementById("addTaskInput"); if (el) el.focus(); }
-  if (state.showNewCat) { const el = document.getElementById("newCatInput"); if (el) el.focus(); }
+  if (state.showEditCats) { const el = document.getElementById("newCatInput"); if (el) el.focus(); }
 }
 
 // ============================================================
