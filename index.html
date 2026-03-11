@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>The Cache</title>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@300;400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #1a1714;
+  --bg2: #211e1a;
+  --border: #2a2520;
+  --border2: #3a3530;
+  --text: #c4b5a0;
+  --text2: #d4cfc6;
+  --text3: #e0d5c4;
+  --dim: #6a6560;
+  --dim2: #5a5550;
+  --dim3: #4a4640;
+  --amber: #d4a056;
+  --amber2: #c9a068;
+  --blue: #7ba0c4;
+  --purple: #9b8ec4;
+  --green: #8b9a7b;
+  --red: #8a4040;
+  --redborder: #4a2020;
+  --mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
+  --serif: 'EB Garamond', Georgia, serif;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--serif);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+.container { max-width: 600px; margin: 0 auto; padding: 24px 16px; }
+.header { margin-bottom: 24px; border-bottom: 1px solid var(--border); padding-bottom: 16px; }
+.header-top { display: flex; justify-content: space-between; align-items: baseline; }
+.title { font-size: 28px; font-weight: 400; letter-spacing: 6px; color: var(--text3); }
+.header-right { display: flex; align-items: baseline; gap: 12px; }
+.save-status { font-size: 11px; font-family: var(--mono); transition: opacity 0.3s; }
+.save-ok { color: var(--green); }
+.save-err { color: var(--red); }
+.count { font-size: 13px; color: var(--dim); font-family: var(--mono); }
+.subtitle { font-size: 14px; color: var(--dim); margin-top: 6px; }
+
+.mode-bar { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+.mode-btn { display: flex; align-items: center; gap: 4px; padding: 8px 14px; border-radius: 6px; border: 1px solid var(--border2); background: transparent; cursor: pointer; font-size: 13px; font-family: var(--serif); color: var(--dim); transition: all 0.2s; }
+.mode-btn.active { border-color: currentColor; }
+.mode-icon { font-size: 16px; margin-right: 4px; }
+
+.cat-bar { display: flex; gap: 2px; margin-bottom: 12px; flex-wrap: wrap; border-bottom: 1px solid var(--border); padding-bottom: 2px; }
+.cat-btn { background: transparent; border: none; cursor: pointer; font-size: 12px; padding: 4px 10px; font-family: var(--mono); color: var(--dim2); transition: all 0.15s; border-bottom: 1px solid transparent; }
+.cat-btn.active { color: var(--text); border-bottom-color: var(--text); }
+
+.top-bar { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+.btn-add { background: var(--border); border: 1px solid var(--border2); color: var(--text); padding: 8px 16px; border-radius: 6px; font-size: 13px; cursor: pointer; font-family: var(--serif); }
+.btn-done { background: transparent; border: 1px solid var(--border); color: var(--dim2); padding: 8px 14px; border-radius: 6px; font-size: 12px; cursor: pointer; font-family: var(--mono); }
+.btn-cat { background: transparent; border: 1px solid var(--border); color: var(--dim2); padding: 8px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; font-family: var(--mono); }
+
+.panel { background: var(--bg2); border: 1px solid var(--border2); border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+.input { width: 100%; background: var(--bg); border: 1px solid var(--border2); color: var(--text2); padding: 10px 12px; border-radius: 6px; font-size: 15px; font-family: var(--serif); margin-bottom: 10px; outline: none; box-sizing: border-box; }
+.form-row { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+.select { background: var(--bg); border: 1px solid var(--border2); color: var(--text); padding: 6px 10px; border-radius: 4px; font-size: 12px; font-family: var(--mono); }
+.slider-label { font-size: 11px; color: #7a7568; font-family: var(--mono); display: flex; align-items: center; gap: 6px; }
+.slider { width: 60px; accent-color: var(--amber); }
+.btn-submit { width: 100%; background: var(--amber); border: none; color: var(--bg); padding: 10px; border-radius: 6px; font-size: 15px; cursor: pointer; font-family: var(--serif); font-weight: 600; }
+
+.add-cat-row { display: flex; gap: 8px; margin-bottom: 12px; align-items: center; }
+.add-cat-row .input { margin-bottom: 0; flex: 1; }
+.btn-cat-save { background: var(--amber); border: none; color: var(--bg); padding: 10px 16px; border-radius: 6px; font-size: 13px; cursor: pointer; font-family: var(--serif); font-weight: 600; flex-shrink: 0; }
+
+.manage-cats { background: var(--bg2); border: 1px solid var(--border2); border-radius: 8px; padding: 14px; margin-bottom: 14px; }
+.manage-cats-title { font-size: 12px; color: var(--dim); margin-bottom: 8px; font-family: var(--mono); text-transform: uppercase; letter-spacing: 2px; }
+.manage-cats-list { display: flex; gap: 6px; flex-wrap: wrap; }
+.btn-remove-cat { background: transparent; border: 1px solid var(--redborder); color: var(--red); padding: 4px 10px; border-radius: 4px; font-size: 11px; cursor: pointer; font-family: var(--mono); }
+.btn-remove-cat.disabled { opacity: 0.4; cursor: not-allowed; }
+.manage-cats-note { font-size: 10px; color: var(--dim3); margin-top: 6px; font-family: var(--mono); }
+
+.done-section { background: #1e1b17; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+.done-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.done-label { color: var(--dim); font-size: 12px; text-transform: uppercase; letter-spacing: 2px; }
+.btn-clear { background: transparent; border: none; color: var(--dim2); font-size: 11px; cursor: pointer; font-family: var(--mono); }
+.done-row { display: flex; gap: 8px; padding: 6px 0; align-items: center; cursor: pointer; }
+.done-check { color: var(--green); font-size: 12px; }
+.done-title { font-size: 13px; color: var(--dim2); text-decoration: line-through; }
+.done-expanded { padding: 6px 0 10px 20px; }
+.done-meta { font-size: 11px; color: var(--dim2); margin-bottom: 8px; font-family: var(--mono); }
+.done-actions { display: flex; gap: 8px; }
+.btn-reinstate { background: var(--border); border: 1px solid var(--border2); color: var(--text); padding: 4px 12px; border-radius: 4px; font-size: 11px; cursor: pointer; font-family: var(--mono); }
+
+.group { margin-bottom: 24px; }
+.group-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.group-dot { width: 6px; height: 6px; border-radius: 50%; }
+.group-label { font-size: 11px; text-transform: uppercase; letter-spacing: 3px; font-family: var(--mono); }
+.group-line { flex: 1; height: 1px; background: var(--border); }
+
+.task-row { display: flex; gap: 10px; padding: 10px 8px; border-radius: 6px; cursor: pointer; transition: background 0.15s; margin-bottom: 2px; border-left: 2px solid transparent; }
+.task-row:active { background: var(--border); }
+.btn-check { background: transparent; border: none; color: var(--dim2); font-size: 18px; cursor: pointer; padding: 2px 4px; line-height: 1; flex-shrink: 0; }
+.task-content { flex: 1; min-width: 0; }
+.task-title { font-size: 15px; color: var(--text2); line-height: 1.4; }
+.task-meta { display: flex; gap: 12px; margin-top: 4px; font-size: 11px; color: var(--dim2); font-family: var(--mono); }
+.task-score { color: #7a7568; }
+.task-expanded { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--border); }
+.score-row { display: flex; gap: 20px; font-size: 12px; color: #7a7568; margin-bottom: 8px; font-family: var(--mono); }
+.task-actions { display: flex; gap: 8px; }
+.btn-edit { background: var(--border); border: 1px solid var(--border2); color: var(--text); padding: 4px 12px; border-radius: 4px; font-size: 11px; cursor: pointer; font-family: var(--mono); }
+.btn-delete { background: transparent; border: 1px solid var(--redborder); color: var(--red); padding: 4px 12px; border-radius: 4px; font-size: 11px; cursor: pointer; font-family: var(--mono); }
+.btn-save-edit { background: var(--amber); border: none; color: var(--bg); padding: 6px 16px; border-radius: 4px; font-size: 12px; cursor: pointer; font-family: var(--serif); font-weight: 600; }
+.btn-cancel-edit { background: transparent; border: 1px solid var(--border2); color: var(--dim); padding: 6px 14px; border-radius: 4px; font-size: 12px; cursor: pointer; font-family: var(--mono); }
+
+.empty { text-align: center; padding: 40px; color: var(--dim); font-size: 14px; }
+.loading { display: flex; justify-content: center; align-items: center; min-height: 300px; color: var(--text); font-size: 20px; }
+.footer { text-align: center; margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--border); font-size: 11px; color: var(--dim3); font-family: var(--mono); }
+.error-banner { background: #2a1a1a; border: 1px solid var(--redborder); color: var(--red); padding: 10px 14px; border-radius: 6px; margin-bottom: 16px; font-size: 13px; font-family: var(--mono); }
+</style>
+</head>
+<body>
+<div class="container" id="app">
+  <div class="loading">Loading Cache...</div>
+</div>
+
+<script>
+// ============================================================
+// THE CACHE — Frontend App
+// Talks to Google Sheets via Apps Script Web App
+// ============================================================
+
+const API_URL = "https://script.google.com/macros/s/AKfycbytmhecyWTzRoG3q3M_uDf6GNnLubuPuchfhqQWbMRO_2gnaIjuKM8rhWfV-MEXeKe_dA/exec";
+
+const MODES = {
+  all: { label: "All Tasks", icon: "◉", color: "#c4b5a0", desc: "Everything" },
+  body: { label: "Body", icon: "⚡", color: "#d4a056", desc: "Calls, errands, physical tasks" },
+  focus: { label: "Focus", icon: "✦", color: "#7ba0c4", desc: "Editing, creative, deep work" },
+  work: { label: "Work", icon: "◆", color: "#9b8ec4", desc: "Business tasks, admin, follow-ups" },
+};
+
+const TIMELINES = ["Today", "This Week", "This Month", "This Quarter", "Later"];
+const TIMELINE_COLORS = {
+  "Today": "#d4a056", "This Week": "#c9a068", "This Month": "#c4b5a0",
+  "This Quarter": "#7a7568", "Later": "#4a4640",
+};
+
+// App State
+let state = {
+  tasks: [],
+  doneTasks: [],
+  categories: ["JPPF Post", "JPPF General", "JPPF Chores", "Hatman", "General", "Chores"],
+  mode: "all",
+  filterCat: "all",
+  showAdd: false,
+  showDone: false,
+  showNewCat: false,
+  showManageCats: false,
+  expandedId: null,
+  editingId: null,
+  editData: null,
+  expandedDoneId: null,
+  newTask: { title: "", category: "JPPF General", timeline: "This Quarter", valuable: 3, urgency: 3, mode: "body" },
+  newCatName: "",
+  saveStatus: "",
+  loaded: false,
+  error: null,
+};
+
+// ============================================================
+// API CALLS
+// ============================================================
+async function apiGet(action) {
+  try {
+    const r = await fetch(API_URL + "?action=" + action);
+    return await r.json();
+  } catch (e) { console.error("API GET error:", e); return { error: e.toString() }; }
+}
+
+async function apiPost(payload) {
+  try {
+    const r = await fetch(API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify(payload),
+    });
+    return await r.json();
+  } catch (e) { console.error("API POST error:", e); return { error: e.toString() }; }
+}
+
+function showSave(msg, ok) {
+  state.saveStatus = msg;
+  render();
+  setTimeout(() => { state.saveStatus = ""; render(); }, ok ? 1500 : 3000);
+}
+
+// ============================================================
+// DATA OPERATIONS
+// ============================================================
+async function loadAll() {
+  const data = await apiGet("getAll");
+  if (data.error) {
+    state.error = "Failed to load: " + data.error;
+    state.loaded = true;
+    render();
+    return;
+  }
+  state.tasks = data.tasks || [];
+  state.doneTasks = data.done || [];
+  if (data.settings && data.settings.categories) {
+    state.categories = data.settings.categories.split(",").map(s => s.trim()).filter(Boolean);
+  }
+  state.loaded = true;
+  state.error = null;
+  render();
+}
+
+async function addTask() {
+  const t = state.newTask;
+  if (!t.title.trim()) return;
+  const result = await apiPost({ action: "addTask", task: t });
+  if (result.error) { showSave("Error: " + result.error, false); return; }
+  showSave("Saved ✓", true);
+  state.newTask = { title: "", category: state.categories[0] || "General", timeline: "This Quarter", valuable: 3, urgency: 3, mode: "body" };
+  state.showAdd = false;
+  await loadAll();
+}
+
+async function completeTask(id) {
+  const result = await apiPost({ action: "completeTask", id });
+  if (result.error) { showSave("Error", false); return; }
+  showSave("Done ✓", true);
+  state.expandedId = null;
+  state.editingId = null;
+  await loadAll();
+}
+
+async function deleteTask(id) {
+  const result = await apiPost({ action: "deleteTask", id });
+  if (result.error) { showSave("Error", false); return; }
+  showSave("Deleted", true);
+  state.expandedId = null;
+  state.editingId = null;
+  await loadAll();
+}
+
+async function saveEdit() {
+  if (!state.editData) return;
+  const result = await apiPost({ action: "updateTask", task: state.editData });
+  if (result.error) { showSave("Error", false); return; }
+  showSave("Saved ✓", true);
+  state.editingId = null;
+  state.editData = null;
+  await loadAll();
+}
+
+async function reinstateTask(id) {
+  const result = await apiPost({ action: "reinstateTask", id });
+  if (result.error) { showSave("Error", false); return; }
+  showSave("Reinstated ✓", true);
+  state.expandedDoneId = null;
+  await loadAll();
+}
+
+async function deleteDone(id) {
+  const result = await apiPost({ action: "deleteDone", id });
+  if (result.error) { showSave("Error", false); return; }
+  showSave("Deleted", true);
+  state.expandedDoneId = null;
+  await loadAll();
+}
+
+async function clearDone() {
+  const result = await apiPost({ action: "clearDone" });
+  if (result.error) { showSave("Error", false); return; }
+  showSave("Cleared ✓", true);
+  state.expandedDoneId = null;
+  await loadAll();
+}
+
+async function addCategory() {
+  const name = state.newCatName.trim();
+  if (!name || state.categories.includes(name)) return;
+  const nc = [...state.categories, name];
+  const result = await apiPost({ action: "updateCategories", categories: nc.join(",") });
+  if (result.error) { showSave("Error", false); return; }
+  state.categories = nc;
+  state.newCatName = "";
+  state.showNewCat = false;
+  showSave("Added ✓", true);
+  render();
+}
+
+async function removeCategory(cat) {
+  const inUse = state.tasks.some(t => t.category === cat) || state.doneTasks.some(t => t.category === cat);
+  if (inUse) { alert('"' + cat + '" is still used by tasks. Reassign them first.'); return; }
+  const nc = state.categories.filter(c => c !== cat);
+  const result = await apiPost({ action: "updateCategories", categories: nc.join(",") });
+  if (result.error) { showSave("Error", false); return; }
+  state.categories = nc;
+  if (state.filterCat === cat) state.filterCat = "all";
+  showSave("Removed ✓", true);
+  render();
+}
+
+// ============================================================
+// HELPERS
+// ============================================================
+function esc(s) { const d = document.createElement("div"); d.textContent = s; return d.innerHTML; }
+
+function getFiltered() {
+  return state.tasks
+    .filter(t => {
+      if (state.mode !== "all" && t.mode !== state.mode) return false;
+      if (state.filterCat !== "all" && t.category !== state.filterCat) return false;
+      return true;
+    })
+    .sort((a, b) => {
+      const tOrder = TIMELINES.indexOf(a.timeline) - TIMELINES.indexOf(b.timeline);
+      if (tOrder !== 0) return tOrder;
+      return (b.priority || 0) - (a.priority || 0);
+    });
+}
+
+function groupByTimeline(tasks) {
+  const g = {};
+  TIMELINES.forEach(tl => {
+    const items = tasks.filter(t => t.timeline === tl);
+    if (items.length > 0) g[tl] = items;
+  });
+  return g;
+}
+
+function closeAllPanels(except) {
+  if (except !== "add") state.showAdd = false;
+  if (except !== "done") state.showDone = false;
+  if (except !== "newCat") state.showNewCat = false;
+  if (except !== "manageCats") state.showManageCats = false;
+}
+
+// ============================================================
+// RENDER
+// ============================================================
+function render() {
+  const app = document.getElementById("app");
+  if (!state.loaded) { app.innerHTML = '<div class="loading">Loading Cache...</div>'; return; }
+
+  const filtered = getFiltered();
+  const grouped = groupByTimeline(filtered);
+  const m = MODES[state.mode];
+
+  let html = '';
+
+  // Error
+  if (state.error) html += `<div class="error-banner">${esc(state.error)}</div>`;
+
+  // Header
+  html += `<div class="header"><div class="header-top"><h1 class="title">THE CACHE</h1><div class="header-right">`;
+  if (state.saveStatus) html += `<div class="save-status ${state.saveStatus.includes("✓") ? "save-ok" : "save-err"}">${esc(state.saveStatus)}</div>`;
+  html += `<div class="count">${filtered.length} tasks</div></div></div>`;
+  html += `<div class="subtitle">${esc(m.desc)}</div></div>`;
+
+  // Mode bar
+  html += '<div class="mode-bar">';
+  Object.entries(MODES).forEach(([key, mo]) => {
+    const active = state.mode === key;
+    const style = active ? `background:${mo.color}22;border-color:${mo.color};color:${mo.color}` : "";
+    html += `<button class="mode-btn ${active?"active":""}" style="${style}" onclick="state.mode='${key}';render()"><span class="mode-icon">${mo.icon}</span>${mo.label}</button>`;
+  });
+  html += '</div>';
+
+  // Cat filter
+  html += '<div class="cat-bar">';
+  html += `<button class="cat-btn ${state.filterCat==="all"?"active":""}" onclick="state.filterCat='all';render()">All</button>`;
+  state.categories.forEach(c => {
+    const label = c.replace("JPPF ", "");
+    html += `<button class="cat-btn ${state.filterCat===c?"active":""}" onclick="state.filterCat='${esc(c)}';render()">${esc(label)}</button>`;
+  });
+  html += '</div>';
+
+  // Action buttons
+  html += '<div class="top-bar">';
+  html += `<button class="btn-add" onclick="closeAllPanels('add');state.showAdd=!state.showAdd;render()">${state.showAdd?"✕ Cancel":"+ Add Task"}</button>`;
+  html += `<button class="btn-done" onclick="closeAllPanels('done');state.showDone=!state.showDone;state.expandedDoneId=null;render()">${state.showDone?"Hide Done":"Done ("+state.doneTasks.length+")"}</button>`;
+  html += `<button class="btn-cat" onclick="closeAllPanels('newCat');state.showNewCat=!state.showNewCat;render()">${state.showNewCat?"✕":"+ Cat"}</button>`;
+  html += `<button class="btn-cat" onclick="closeAllPanels('manageCats');state.showManageCats=!state.showManageCats;render()">${state.showManageCats?"✕":"– Cat"}</button>`;
+  html += '</div>';
+
+  // Add category
+  if (state.showNewCat) {
+    html += `<div class="add-cat-row"><input class="input" id="newCatInput" placeholder="New category name" value="${esc(state.newCatName)}" oninput="state.newCatName=this.value" onkeydown="if(event.key==='Enter')addCategory()"><button class="btn-cat-save" onclick="addCategory()">Add</button></div>`;
+  }
+
+  // Manage categories
+  if (state.showManageCats) {
+    html += '<div class="manage-cats"><div class="manage-cats-title">Remove a category</div><div class="manage-cats-list">';
+    state.categories.forEach(c => {
+      const inUse = state.tasks.some(t => t.category === c) || state.doneTasks.some(t => t.category === c);
+      html += `<button class="btn-remove-cat ${inUse?"disabled":""}" onclick="${inUse?"":"removeCategory('"+esc(c)+"')"}">✕ ${esc(c)}</button>`;
+    });
+    html += '</div><div class="manage-cats-note">Greyed out = still used by tasks</div></div>';
+  }
+
+  // Add task form
+  if (state.showAdd) {
+    html += '<div class="panel">';
+    html += `<input class="input" id="addTaskInput" placeholder="What needs to happen?" value="${esc(state.newTask.title)}" oninput="state.newTask.title=this.value" onkeydown="if(event.key==='Enter')addTask()">`;
+    html += '<div class="form-row">';
+    html += `<select class="select" onchange="state.newTask.category=this.value">${state.categories.map(c=>`<option value="${esc(c)}" ${state.newTask.category===c?"selected":""}>${esc(c)}</option>`).join("")}</select>`;
+    html += `<select class="select" onchange="state.newTask.timeline=this.value">${TIMELINES.map(t=>`<option value="${t}" ${state.newTask.timeline===t?"selected":""}>${t}</option>`).join("")}</select>`;
+    html += `<select class="select" onchange="state.newTask.mode=this.value"><option value="body" ${state.newTask.mode==="body"?"selected":""}>⚡ Body</option><option value="focus" ${state.newTask.mode==="focus"?"selected":""}>✦ Focus</option><option value="work" ${state.newTask.mode==="work"?"selected":""}>◆ Work</option></select>`;
+    html += '</div><div class="form-row">';
+    html += `<label class="slider-label">Value: ${state.newTask.valuable}<input type="range" class="slider" min="0" max="10" value="${state.newTask.valuable}" oninput="state.newTask.valuable=+this.value;render()"></label>`;
+    html += `<label class="slider-label">Urgency: ${state.newTask.urgency}<input type="range" class="slider" min="0" max="10" value="${state.newTask.urgency}" oninput="state.newTask.urgency=+this.value;render()"></label>`;
+    html += '</div>';
+    html += '<button class="btn-submit" onclick="addTask()">Add to Cache</button>';
+    html += '</div>';
+  }
+
+  // Done list
+  if (state.showDone) {
+    html += '<div class="done-section"><div class="done-header"><span class="done-label">Completed</span>';
+    if (state.doneTasks.length > 0) html += '<button class="btn-clear" onclick="clearDone()">Clear all</button>';
+    html += '</div>';
+    if (state.doneTasks.length === 0) html += '<div style="color:#4a4640;font-size:13px;padding:8px 0">No completed tasks yet.</div>';
+    state.doneTasks.forEach(t => {
+      html += `<div class="done-row" onclick="state.expandedDoneId=state.expandedDoneId==='${t.id}'?null:'${t.id}';render()"><span class="done-check">✓</span><span class="done-title">${esc(t.title)}</span></div>`;
+      if (state.expandedDoneId === t.id) {
+        html += `<div class="done-expanded"><div class="done-meta">${esc(t.category)} · ${esc(t.timeline)} · P ${t.priority}</div><div class="done-actions"><button class="btn-reinstate" onclick="event.stopPropagation();reinstateTask('${t.id}')">↩ Reinstate</button><button class="btn-delete" onclick="event.stopPropagation();deleteDone('${t.id}')">Delete forever</button></div></div>`;
+      }
+    });
+    html += '</div>';
+  }
+
+  // Task list
+  Object.entries(grouped).forEach(([timeline, items]) => {
+    const color = TIMELINE_COLORS[timeline] || "#7a7568";
+    html += '<div class="group">';
+    html += `<div class="group-header"><div class="group-dot" style="background:${color}"></div><span class="group-label" style="color:${color}">${timeline}</span><div class="group-line"></div></div>`;
+    items.forEach(task => {
+      const modeInfo = MODES[task.mode] || MODES.body;
+      html += '<div class="task-row">';
+      html += `<button class="btn-check" onclick="event.stopPropagation();completeTask('${task.id}')" title="Complete">○</button>`;
+      html += `<div class="task-content" onclick="if(state.editingId==='${task.id}')return;state.expandedId=state.expandedId==='${task.id}'?null:'${task.id}';render()">`;
+      html += `<div class="task-title">${esc(task.title)}</div>`;
+      html += `<div class="task-meta"><span>${esc(task.category)}</span><span class="task-score">P ${task.priority}</span><span style="color:${modeInfo.color}">${modeInfo.icon} ${task.mode}</span></div>`;
+
+      // Expanded view
+      if (state.expandedId === task.id && state.editingId !== task.id) {
+        html += '<div class="task-expanded">';
+        html += `<div class="score-row"><span>Value: ${task.valuable}/10</span><span>Urgency: ${task.urgency}/10</span></div>`;
+        html += `<div class="task-actions"><button class="btn-edit" onclick="event.stopPropagation();state.editingId='${task.id}';state.editData=JSON.parse(JSON.stringify(state.tasks.find(t=>t.id==='${task.id}')));render()">Edit task</button><button class="btn-delete" onclick="event.stopPropagation();deleteTask('${task.id}')">Delete</button></div>`;
+        html += '</div>';
+      }
+
+      // Edit mode
+      if (state.editingId === task.id && state.editData) {
+        const ed = state.editData;
+        html += '<div class="task-expanded" onclick="event.stopPropagation()">';
+        html += `<input class="input" value="${esc(ed.title)}" oninput="state.editData.title=this.value">`;
+        html += '<div class="form-row">';
+        html += `<select class="select" onchange="state.editData.category=this.value">${state.categories.map(c=>`<option value="${esc(c)}" ${ed.category===c?"selected":""}>${esc(c)}</option>`).join("")}</select>`;
+        html += `<select class="select" onchange="state.editData.timeline=this.value">${TIMELINES.map(t=>`<option value="${t}" ${ed.timeline===t?"selected":""}>${t}</option>`).join("")}</select>`;
+        html += `<select class="select" onchange="state.editData.mode=this.value"><option value="body" ${ed.mode==="body"?"selected":""}>⚡ Body</option><option value="focus" ${ed.mode==="focus"?"selected":""}>✦ Focus</option><option value="work" ${ed.mode==="work"?"selected":""}>◆ Work</option></select>`;
+        html += '</div><div class="form-row">';
+        html += `<label class="slider-label">Value: ${ed.valuable}<input type="range" class="slider" min="0" max="10" value="${ed.valuable}" oninput="state.editData.valuable=+this.value;render()"></label>`;
+        html += `<label class="slider-label">Urgency: ${ed.urgency}<input type="range" class="slider" min="0" max="10" value="${ed.urgency}" oninput="state.editData.urgency=+this.value;render()"></label>`;
+        html += '</div>';
+        html += `<div class="task-actions"><button class="btn-save-edit" onclick="event.stopPropagation();saveEdit()">Save</button><button class="btn-cancel-edit" onclick="event.stopPropagation();state.editingId=null;state.editData=null;render()">Cancel</button><button class="btn-delete" style="margin-left:auto" onclick="event.stopPropagation();deleteTask('${task.id}')">Delete</button></div>`;
+        html += '</div>';
+      }
+
+      html += '</div></div>';
+    });
+    html += '</div>';
+  });
+
+  if (Object.keys(grouped).length === 0) {
+    html += '<div class="empty">No tasks match this filter.</div>';
+  }
+
+  html += '<div class="footer">Synced with Google Sheets · Body / Focus / Work</div>';
+
+  app.innerHTML = html;
+
+  // Auto-focus inputs
+  if (state.showAdd) { const el = document.getElementById("addTaskInput"); if (el) el.focus(); }
+  if (state.showNewCat) { const el = document.getElementById("newCatInput"); if (el) el.focus(); }
+}
+
+// ============================================================
+// INIT
+// ============================================================
+loadAll();
+</script>
+</body>
+</html>
