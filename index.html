@@ -118,8 +118,13 @@ body {
 .edit-cats-title { font-size: 12px; color: var(--dim); margin-bottom: 12px; font-family: var(--mono); text-transform: uppercase; letter-spacing: 2px; }
 .edit-cats-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
 .edit-cat-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: var(--bg); border-radius: 6px; border: 1px solid var(--border); }
-.edit-cat-name { font-size: 13px; color: var(--text2); font-family: var(--serif); }
+.edit-cat-name { font-size: 13px; color: var(--text2); font-family: var(--serif); cursor: pointer; }
+.edit-cat-name:hover { color: var(--amber); }
 .edit-cat-count { font-size: 10px; color: var(--dim); font-family: var(--mono); margin-left: 8px; }
+.edit-cat-rename { display: flex; gap: 6px; align-items: center; flex: 1; }
+.edit-cat-rename .input { margin-bottom: 0; font-size: 13px; padding: 6px 10px; }
+.btn-rename-save { background: var(--amber); border: none; color: var(--bg); padding: 6px 12px; border-radius: 4px; font-size: 11px; cursor: pointer; font-family: var(--mono); flex-shrink: 0; }
+.btn-rename-cancel { background: transparent; border: 1px solid var(--border2); color: var(--dim); padding: 6px 10px; border-radius: 4px; font-size: 11px; cursor: pointer; font-family: var(--mono); flex-shrink: 0; }
 .btn-remove-cat { background: transparent; border: none; color: var(--red); padding: 4px 8px; font-size: 14px; cursor: pointer; opacity: 0.6; transition: opacity 0.15s; }
 .btn-remove-cat:hover { opacity: 1; }
 .btn-remove-cat.disabled { opacity: 0.15; cursor: not-allowed; }
@@ -207,6 +212,8 @@ let state = {
   expandedDoneId: null,
   newTask: { title: "", category: "JPPF General", timeline: "This Quarter", valuable: 3, urgency: 3, mode: "body" },
   newCatName: "",
+  renamingCat: null,
+  renameCatValue: "",
   saveStatus: "",
   loaded: false,
   error: null,
@@ -415,6 +422,47 @@ async function removeCategory(cat) {
   render();
 }
 
+function startRenameCategory(cat) {
+  state.renamingCat = cat;
+  state.renameCatValue = cat;
+  render();
+  setTimeout(() => { const el = document.getElementById("renameCatInput"); if (el) { el.focus(); el.select(); } }, 50);
+}
+
+async function saveRenameCategory() {
+  const oldName = state.renamingCat;
+  const newName = (state.renameCatValue || "").trim();
+  if (!newName || newName === oldName) { state.renamingCat = null; state.renameCatValue = ""; render(); return; }
+  if (state.categories.includes(newName)) { alert('"' + newName + '" already exists.'); return; }
+
+  // Update category list
+  const nc = state.categories.map(c => c === oldName ? newName : c);
+
+  // Update all tasks that use this category (optimistic)
+  state.tasks.forEach(t => { if (t.category === oldName) t.category = newName; });
+  state.doneTasks.forEach(t => { if (t.category === oldName) t.category = newName; });
+  state.categories = nc;
+  if (state.filterCat === oldName) state.filterCat = newName;
+  state.renamingCat = null;
+  state.renameCatValue = "";
+  showSave("Renaming...", true);
+  render();
+
+  // Save categories
+  await apiPost({ action: "updateCategories", categories: nc.join(",") });
+
+  // Update each task in the sheet
+  for (const t of state.tasks.filter(t => t.category === newName)) {
+    await apiPost({ action: "updateTask", task: t });
+  }
+  for (const t of state.doneTasks.filter(t => t.category === newName)) {
+    await apiPost({ action: "updateTask", task: t });
+  }
+
+  showSave("Renamed ✓", true);
+  bgSync();
+}
+
 // ============================================================
 // HELPERS
 // ============================================================
@@ -504,7 +552,16 @@ function render() {
     state.categories.forEach(c => {
       const count = state.tasks.filter(t => t.category === c).length;
       const inUse = count > 0 || state.doneTasks.some(t => t.category === c);
-      html += `<div class="edit-cat-item"><div><span class="edit-cat-name">${esc(c)}</span><span class="edit-cat-count">${count} task${count!==1?"s":""}</span></div><button class="btn-remove-cat ${inUse?"disabled":""}" onclick="${inUse?"":"removeCategory('"+esc(c)+"')"}" title="${inUse?"In use — reassign tasks first":"Remove category"}">✕</button></div>`;
+      html += '<div class="edit-cat-item">';
+      if (state.renamingCat === c) {
+        // Rename mode
+        html += `<div class="edit-cat-rename"><input class="input" id="renameCatInput" value="${esc(state.renameCatValue)}" oninput="state.renameCatValue=this.value" onkeydown="if(event.key==='Enter')saveRenameCategory();if(event.key==='Escape'){state.renamingCat=null;render()}"><button class="btn-rename-save" onclick="saveRenameCategory()">Save</button><button class="btn-rename-cancel" onclick="state.renamingCat=null;render()">✕</button></div>`;
+      } else {
+        // View mode
+        html += `<div><span class="edit-cat-name" onclick="startRenameCategory('${esc(c)}')" title="Click to rename">${esc(c)}</span><span class="edit-cat-count">${count} task${count!==1?"s":""}</span></div>`;
+        html += `<button class="btn-remove-cat ${inUse?"disabled":""}" onclick="${inUse?"":"removeCategory('"+esc(c)+"')"}" title="${inUse?"In use — reassign tasks first":"Remove category"}">✕</button>`;
+      }
+      html += '</div>';
     });
     html += '</div>';
     html += '<div class="edit-cats-divider"></div>';
