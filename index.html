@@ -137,7 +137,6 @@ body { background: var(--bg); color: var(--text); font-family: var(--serif); min
 .ns-item-label { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .ns-item-arrow { font-size:10px; color:var(--dim3); transition:transform 0.15s; }
 .ns-item-arrow.open { transform:rotate(90deg); }
-.ns-sub { padding-left:16px; }
 .ns-item-actions { display:flex; gap:2px; opacity:0; transition:opacity 0.15s; }
 .ns-item:hover .ns-item-actions { opacity:1; }
 .ns-act-btn { background:transparent; border:none; color:var(--dim); font-size:11px; cursor:pointer; padding:2px 4px; }
@@ -192,7 +191,7 @@ let state = {
   newCatName:"", renamingCat:null, renameCatValue:"",
   saveStatus:"", loaded:false, error:null,
   // Notes
-  notes:[], activeNoteId:null, activeSubId:null, renamingNoteId:null, renameNoteValue:"",
+  notes:[], activePath:null, confirmDeletePath:null,
   notesDirty:false, notesSaveTimer:null,
 };
 
@@ -317,7 +316,7 @@ async function saveRenameCategory() {
   showSave("Renamed ✓", true); bgSync();
 }
 
-// === NOTES OPS ===
+// === NOTES OPS (recursive infinite nesting) ===
 function saveNotesDebounced() {
   if (state.notesSaveTimer) clearTimeout(state.notesSaveTimer);
   state.notesSaveTimer = setTimeout(async () => {
@@ -325,63 +324,97 @@ function saveNotesDebounced() {
   }, 5000);
 }
 
-function addNote() {
-  const id = "note_"+Date.now();
-  state.notes.push({ id, title:"Untitled", content:"", children:[] });
-  state.activeNoteId=id; state.activeSubId=null; render(); saveNotesDebounced();
-  setTimeout(()=>{const el=document.getElementById("noteTitleInput");if(el){el.focus();el.select();}},50);
+// Navigate the tree by path (array of IDs)
+function findNoteByPath(path) {
+  if (!path || path.length === 0) return null;
+  let list = state.notes;
+  let node = null;
+  for (let i = 0; i < path.length; i++) {
+    node = list.find(n => n.id === path[i]);
+    if (!node) return null;
+    if (i < path.length - 1) list = node.children || [];
+  }
+  return node;
 }
 
-function addSubNote(parentId) {
-  const parent = state.notes.find(n=>n.id===parentId);
-  if (!parent) return;
-  if (!parent.children) parent.children = [];
-  const id = "sub_"+Date.now();
-  parent.children.push({ id, title:"Untitled", content:"" });
-  state.activeNoteId=parentId; state.activeSubId=id; render(); saveNotesDebounced();
+function findParentList(path) {
+  if (!path || path.length === 0) return state.notes;
+  if (path.length === 1) return state.notes;
+  const parentPath = path.slice(0, -1);
+  const parent = findNoteByPath(parentPath);
+  return parent ? (parent.children || []) : state.notes;
 }
 
-function deleteNote(id) {
-  state.notes = state.notes.filter(n=>n.id!==id);
-  if (state.activeNoteId===id) { state.activeNoteId=null; state.activeSubId=null; }
+function addNoteToList(parentPath) {
+  const id = "n_" + Date.now();
+  const newNote = { id, title: "Untitled", content: "", children: [] };
+  if (!parentPath || parentPath.length === 0) {
+    state.notes.push(newNote);
+    state.activePath = [id];
+  } else {
+    const parent = findNoteByPath(parentPath);
+    if (!parent) return;
+    if (!parent.children) parent.children = [];
+    parent.children.push(newNote);
+    state.activePath = [...parentPath, id];
+  }
+  render(); saveNotesDebounced();
+  setTimeout(() => { const el = document.getElementById("noteTitleInput"); if (el) { el.focus(); el.select(); } }, 50);
+}
+
+function confirmDeleteNote(pathJson) {
+  state.confirmDeletePath = JSON.parse(pathJson);
+  render();
+}
+
+function cancelDelete() {
+  state.confirmDeletePath = null;
+  render();
+}
+
+function executeDelete() {
+  const path = state.confirmDeletePath;
+  if (!path || path.length === 0) return;
+  const id = path[path.length - 1];
+  if (path.length === 1) {
+    state.notes = state.notes.filter(n => n.id !== id);
+  } else {
+    const parentPath = path.slice(0, -1);
+    const parent = findNoteByPath(parentPath);
+    if (parent && parent.children) parent.children = parent.children.filter(n => n.id !== id);
+  }
+  // Clear active if deleted
+  if (state.activePath && state.activePath.join("/").startsWith(path.join("/"))) {
+    state.activePath = null;
+  }
+  state.confirmDeletePath = null;
   render(); saveNotesDebounced();
 }
 
-function deleteSubNote(parentId, subId) {
-  const parent = state.notes.find(n=>n.id===parentId);
-  if (parent && parent.children) parent.children = parent.children.filter(s=>s.id!==subId);
-  if (state.activeSubId===subId) state.activeSubId=null;
-  render(); saveNotesDebounced();
-}
-
-function moveNote(id, dir) {
-  const idx = state.notes.findIndex(n=>n.id===id);
-  if (idx<0) return;
-  const newIdx = idx+dir;
-  if (newIdx<0||newIdx>=state.notes.length) return;
-  [state.notes[idx], state.notes[newIdx]] = [state.notes[newIdx], state.notes[idx]];
-  render(); saveNotesDebounced();
-}
-
-function moveSubNote(parentId, subId, dir) {
-  const parent = state.notes.find(n=>n.id===parentId);
-  if (!parent||!parent.children) return;
-  const idx = parent.children.findIndex(s=>s.id===subId);
-  const newIdx = idx+dir;
-  if (newIdx<0||newIdx>=parent.children.length) return;
-  [parent.children[idx], parent.children[newIdx]] = [parent.children[newIdx], parent.children[idx]];
+function moveNoteInList(path, dir) {
+  if (!path || path.length === 0) return;
+  const id = path[path.length - 1];
+  let list;
+  if (path.length === 1) { list = state.notes; }
+  else { const parent = findNoteByPath(path.slice(0, -1)); if (!parent) return; list = parent.children || []; }
+  const idx = list.findIndex(n => n.id === id);
+  const newIdx = idx + dir;
+  if (newIdx < 0 || newIdx >= list.length) return;
+  [list[idx], list[newIdx]] = [list[newIdx], list[idx]];
   render(); saveNotesDebounced();
 }
 
 function getActiveNote() {
-  if (!state.activeNoteId) return null;
-  const note = state.notes.find(n=>n.id===state.activeNoteId);
-  if (!note) return null;
-  if (state.activeSubId && note.children) {
-    const sub = note.children.find(s=>s.id===state.activeSubId);
-    if (sub) return { ...sub, _parentId:note.id, _isSub:true };
-  }
-  return note;
+  if (!state.activePath || state.activePath.length === 0) return null;
+  return findNoteByPath(state.activePath);
+}
+
+// Expanded nodes tracker (which tree nodes are open)
+let expandedNodes = {};
+
+function toggleExpand(id) {
+  expandedNodes[id] = !expandedNodes[id];
+  render();
 }
 
 // === HELPERS ===
@@ -562,144 +595,140 @@ function renderNotes(app) {
 
   // Sidebar
   html += '<div class="notes-sidebar">';
-  html += '<div class="ns-header"><span class="ns-title">Notes</span><button class="ns-add" onclick="addNote()" title="New note">+</button></div>';
-
-  state.notes.forEach((note, i) => {
-    const isActive = state.activeNoteId===note.id && !state.activeSubId;
-    const isParentActive = state.activeNoteId===note.id;
-    const hasChildren = note.children && note.children.length>0;
-
-    html += `<div class="ns-item ${isActive?"active":""}" onclick="navigateToNote('${note.id}',null)">`;
-    if (hasChildren) html += `<span class="ns-item-arrow ${isParentActive?"open":""}" onclick="event.stopPropagation();state.activeNoteId=state.activeNoteId==='${note.id}'?null:'${note.id}';state.activeSubId=null;updateHash();render()">▶</span>`;
-    html += `<span class="ns-item-label">${esc(note.title)}</span>`;
-    html += '<div class="ns-item-actions">';
-    html += `<button class="ns-link-btn" onclick="event.stopPropagation();copyNoteLink('${note.id}',null,this)" title="Copy link">🔗</button>`;
-    html += `<div class="ns-move-btns"><button class="ns-move-btn" onclick="event.stopPropagation();moveNote('${note.id}',-1)" title="Move up">▲</button><button class="ns-move-btn" onclick="event.stopPropagation();moveNote('${note.id}',1)" title="Move down">▼</button></div>`;
-    html += `<button class="ns-act-btn" onclick="event.stopPropagation();deleteNote('${note.id}')" title="Delete">✕</button>`;
-    html += '</div></div>';
-
-    // Sub-notes
-    if (isParentActive && hasChildren) {
-      html += '<div class="ns-sub">';
-      note.children.forEach((sub, si) => {
-        const isSubActive = state.activeSubId===sub.id;
-        html += `<div class="ns-item ${isSubActive?"active":""}" onclick="event.stopPropagation();navigateToNote('${note.id}','${sub.id}')">`;
-        html += `<span class="ns-item-label">${esc(sub.title)}</span>`;
-        html += '<div class="ns-item-actions">';
-        html += `<button class="ns-link-btn" onclick="event.stopPropagation();copyNoteLink('${note.id}','${sub.id}',this)" title="Copy link">🔗</button>`;
-        html += `<div class="ns-move-btns"><button class="ns-move-btn" onclick="event.stopPropagation();moveSubNote('${note.id}','${sub.id}',-1)">▲</button><button class="ns-move-btn" onclick="event.stopPropagation();moveSubNote('${note.id}','${sub.id}',1)">▼</button></div>`;
-        html += `<button class="ns-act-btn" onclick="event.stopPropagation();deleteSubNote('${note.id}','${sub.id}')">✕</button>`;
-        html += '</div></div>';
-      });
-      html += '</div>';
-    }
-  });
+  html += '<div class="ns-header"><span class="ns-title">Notes</span><button class="ns-add" onclick="addNoteToList([])" title="New note">+</button></div>';
+  html += renderNoteTree(state.notes, []);
   html += '</div>';
+
+  // Delete confirmation overlay
+  if (state.confirmDeletePath) {
+    const delNote = findNoteByPath(state.confirmDeletePath);
+    const name = delNote ? delNote.title : "this note";
+    const childCount = delNote && delNote.children ? delNote.children.length : 0;
+    html += '<div style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:100;">';
+    html += '<div style="background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:24px;max-width:340px;text-align:center;">';
+    html += `<div style="font-size:16px;color:var(--text2);margin-bottom:8px;">Delete "${esc(name)}"?</div>`;
+    if (childCount > 0) html += `<div style="font-size:12px;color:var(--red);margin-bottom:12px;font-family:var(--mono);">This note has ${childCount} sub-note${childCount>1?"s":""}. They will also be deleted.</div>`;
+    else html += '<div style="font-size:12px;color:var(--dim);margin-bottom:12px;font-family:var(--mono);">This cannot be undone.</div>';
+    html += '<div style="display:flex;gap:10px;justify-content:center;">';
+    html += '<button onclick="executeDelete()" style="background:var(--red);border:none;color:#fff;padding:8px 20px;border-radius:6px;font-size:13px;cursor:pointer;font-family:var(--serif);">Delete</button>';
+    html += '<button onclick="cancelDelete()" style="background:transparent;border:1px solid var(--border2);color:var(--dim);padding:8px 20px;border-radius:6px;font-size:13px;cursor:pointer;font-family:var(--mono);">Cancel</button>';
+    html += '</div></div></div>';
+  }
 
   // Main editor
   html += '<div class="notes-main">';
   const activeNote = getActiveNote();
   if (activeNote) {
-    const isSub = activeNote._isSub;
-    const parentId = activeNote._parentId;
-
-    if (!isSub) {
-      html += '<div class="note-sub-header">';
-      html += `<button class="note-sub-add" onclick="addSubNote('${activeNote.id}')">+ Sub-note</button>`;
-      html += '</div>';
-    }
-
+    html += '<div class="note-sub-header">';
+    html += `<button class="note-sub-add" onclick="addNoteToList(${JSON.stringify(state.activePath)})">+ Sub-note</button>`;
+    html += '</div>';
     html += `<input class="note-title-input" id="noteTitleInput" value="${esc(activeNote.title)}" oninput="updateNoteField('title',this.value)" placeholder="Note title">`;
     html += `<textarea class="note-textarea" oninput="updateNoteField('content',this.value)" placeholder="Start writing...">${esc(activeNote.content||"")}</textarea>`;
   } else {
     html += '<div class="note-empty">Select a note or click + to create one</div>';
   }
   html += '</div></div>';
-
   app.innerHTML = html;
 }
 
-function updateNoteField(field, value) {
-  if (state.activeSubId) {
-    const parent = state.notes.find(n=>n.id===state.activeNoteId);
-    if (parent && parent.children) {
-      const sub = parent.children.find(s=>s.id===state.activeSubId);
-      if (sub) sub[field] = value;
+function renderNoteTree(list, parentPath, depth) {
+  depth = depth || 0;
+  if (!list || list.length === 0) return "";
+  const maxIndent = 6;
+  const indent = Math.min(depth, maxIndent) * 12;
+  let html = "";
+
+  list.forEach((note, i) => {
+    const path = [...parentPath, note.id];
+    const pathJson = JSON.stringify(path);
+    const isActive = state.activePath && state.activePath.join("/") === path.join("/");
+    const hasChildren = note.children && note.children.length > 0;
+    const isExpanded = expandedNodes[note.id];
+
+    html += `<div class="ns-item ${isActive?"active":""}" data-note-id="${note.id}" style="padding-left:${12+indent}px" onclick="navigateToNote(${pathJson})">`;
+
+    // Expand arrow
+    if (hasChildren) {
+      html += `<span class="ns-item-arrow ${isExpanded?"open":""}" onclick="event.stopPropagation();toggleExpand('${note.id}')">▶</span>`;
+    } else if (depth > 0) {
+      html += '<span style="width:12px;display:inline-block;"></span>';
     }
-  } else if (state.activeNoteId) {
-    const note = state.notes.find(n=>n.id===state.activeNoteId);
-    if (note) note[field] = value;
-  }
-  // Update sidebar label directly via DOM (no re-render)
-  if (field === "title") {
-    const activeId = state.activeSubId || state.activeNoteId;
-    const items = document.querySelectorAll(".ns-item");
-    items.forEach(item => {
-      const onclick = item.getAttribute("onclick") || "";
-      if (onclick.includes(activeId)) {
-        const label = item.querySelector(".ns-item-label");
-        if (label) label.textContent = value || "Untitled";
-      }
-    });
+
+    html += `<span class="ns-item-label">${esc(note.title)}</span>`;
+
+    html += '<div class="ns-item-actions">';
+    html += `<button class="ns-link-btn" onclick="event.stopPropagation();copyNoteLink(${pathJson},this)" title="Copy link">🔗</button>`;
+    html += `<div class="ns-move-btns"><button class="ns-move-btn" onclick="event.stopPropagation();moveNoteInList(${pathJson},-1)">▲</button><button class="ns-move-btn" onclick="event.stopPropagation();moveNoteInList(${pathJson},1)">▼</button></div>`;
+    html += `<button class="ns-act-btn" onclick="event.stopPropagation();confirmDeleteNote('${esc(pathJson)}')" title="Delete">✕</button>`;
+    html += '</div></div>';
+
+    // Render children recursively if expanded
+    if (hasChildren && isExpanded) {
+      html += renderNoteTree(note.children, path, depth + 1);
+    }
+  });
+
+  return html;
+}
+
+function updateNoteField(field, value) {
+  const note = getActiveNote();
+  if (note) note[field] = value;
+  // Update sidebar label directly via DOM if title changed
+  if (field === "title" && state.activePath) {
+    const activeId = state.activePath[state.activePath.length - 1];
+    const items = document.querySelectorAll("[data-note-id='" + activeId + "'] .ns-item-label");
+    items.forEach(el => { el.textContent = value || "Untitled"; });
   }
   saveNotesDebounced();
 }
 
 // === URL HASH ROUTING ===
 function updateHash() {
-  if (state.view === "notes" && state.activeNoteId) {
-    if (state.activeSubId) {
-      window.location.hash = "note/" + state.activeNoteId + "/" + state.activeSubId;
-    } else {
-      window.location.hash = "note/" + state.activeNoteId;
-    }
+  if (state.view === "notes" && state.activePath && state.activePath.length > 0) {
+    window.location.hash = "note/" + state.activePath.join("/");
   } else if (state.view === "tasks") {
     window.location.hash = "tasks";
-  } else {
-    window.location.hash = "";
+  } else if (state.view === "notes") {
+    window.location.hash = "notes";
   }
 }
 
 function readHash() {
   const hash = window.location.hash.replace("#", "");
   if (!hash) return;
-
   const parts = hash.split("/");
-
   if (parts[0] === "tasks") {
     state.view = "tasks";
-  } else if (parts[0] === "note" && parts[1]) {
+  } else if (parts[0] === "note" && parts.length > 1) {
     state.view = "notes";
-    state.activeNoteId = parts[1];
-    if (parts[2]) {
-      state.activeSubId = parts[2];
-    } else {
-      state.activeSubId = null;
+    state.activePath = parts.slice(1);
+    // Auto-expand all ancestors
+    for (let i = 0; i < state.activePath.length; i++) {
+      expandedNodes[state.activePath[i]] = true;
     }
+  } else if (parts[0] === "notes") {
+    state.view = "notes";
   }
 }
 
-function navigateToNote(noteId, subId) {
-  state.activeNoteId = noteId;
-  state.activeSubId = subId;
+function navigateToNote(pathArr) {
+  state.activePath = pathArr;
   state.view = "notes";
   updateHash();
   render();
 }
 
-function copyNoteLink(noteId, subId, btnEl) {
-  let url = window.location.origin + window.location.pathname + "#note/" + noteId;
-  if (subId && subId !== "null") url += "/" + subId;
+function copyNoteLink(pathArr, btnEl) {
+  const url = window.location.origin + window.location.pathname + "#note/" + pathArr.join("/");
   navigator.clipboard.writeText(url).then(() => {
     if (btnEl) { btnEl.textContent = "✓"; btnEl.classList.add("ns-link-copied"); setTimeout(() => { btnEl.textContent = "🔗"; btnEl.classList.remove("ns-link-copied"); }, 1500); }
   }).catch(() => {
-    // Fallback for older browsers
     const ta = document.createElement("textarea"); ta.value = url; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); document.body.removeChild(ta);
     if (btnEl) { btnEl.textContent = "✓"; setTimeout(() => { btnEl.textContent = "🔗"; }, 1500); }
   });
 }
 
-// Listen for hash changes (back/forward browser buttons)
 window.addEventListener("hashchange", () => { readHash(); render(); });
 
 // === INIT ===
