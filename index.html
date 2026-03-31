@@ -27,7 +27,7 @@ body { background: var(--bg); color: var(--text); font-family: var(--serif); min
 .nav-tab { flex:1; padding:12px; text-align:center; font-size:14px; font-family:var(--serif); color:var(--dim); cursor:pointer; border-bottom:2px solid transparent; transition:all 0.15s; background:transparent; border-top:none; border-left:none; border-right:none; }
 .nav-tab.active { color:var(--amber); border-bottom-color:var(--amber); }
 
-.container { max-width:600px; margin:0 auto; padding:20px 16px; }
+.container { max-width:900px; margin:0 auto; padding:20px 16px; }
 .header { margin-bottom:20px; border-bottom:1px solid var(--border); padding-bottom:14px; }
 .header-top { display:flex; justify-content:space-between; align-items:baseline; }
 .title { font-size:26px; font-weight:400; letter-spacing:6px; color:var(--text3); }
@@ -125,8 +125,8 @@ body { background: var(--bg); color: var(--text); font-family: var(--serif); min
 
 /* === NOTES SYSTEM === */
 .notes-container { display:flex; gap:0; min-height:70vh; }
-.notes-sidebar { width:200px; flex-shrink:0; border-right:1px solid var(--border); padding:12px 0; overflow-y:auto; }
-.notes-main { flex:1; padding:16px; display:flex; flex-direction:column; }
+.notes-sidebar { width:240px; flex-shrink:0; border-right:1px solid var(--border); padding:12px 0; overflow-y:auto; }
+.notes-main { flex:1; padding:16px 24px; display:flex; flex-direction:column; min-width:0; }
 .ns-header { display:flex; justify-content:space-between; align-items:center; padding:0 12px 10px; border-bottom:1px solid var(--border); margin-bottom:8px; }
 .ns-title { font-size:12px; color:var(--dim); font-family:var(--mono); text-transform:uppercase; letter-spacing:2px; }
 .ns-add { background:transparent; border:none; color:var(--amber); font-size:18px; cursor:pointer; padding:2px 6px; }
@@ -156,9 +156,11 @@ body { background: var(--bg); color: var(--text); font-family: var(--serif); min
 .note-sub-header { display:flex; align-items:center; gap:8px; margin-bottom:10px; }
 .note-sub-add { background:var(--border); border:1px solid var(--border2); color:var(--text); padding:4px 10px; border-radius:4px; font-size:11px; cursor:pointer; font-family:var(--mono); }
 
-@media (max-width:500px) {
-  .notes-sidebar { width:150px; }
+@media (max-width:600px) {
+  .container { max-width:100%; }
+  .notes-sidebar { width:160px; }
   .ns-item { padding:8px 8px; font-size:12px; }
+  .notes-main { padding:12px; }
 }
 </style>
 </head>
@@ -320,7 +322,9 @@ function saveNotesDebounced() {
   if (state.notesSaveTimer) clearTimeout(state.notesSaveTimer);
   state.notesSaveTimer = setTimeout(async () => {
     await apiPost({ action:"saveNotes", notes:state.notes });
-    showSave("Notes saved ✓", true);
+    // Show save indicator without re-rendering (which would destroy active textarea)
+    const indicator = document.getElementById("notesSaveIndicator");
+    if (indicator) { indicator.textContent = "Saved ✓"; indicator.className = "save-ok"; setTimeout(() => { indicator.textContent = ""; }, 1200); }
   }, 1500);
 }
 
@@ -414,8 +418,8 @@ function closeAllPanels(except) {
 function render() {
   // Nav tabs
   document.getElementById("navTabs").innerHTML =
-    `<button class="nav-tab ${state.view==="tasks"?"active":""}" onclick="state.view='tasks';updateHash();render()">Tasks</button>` +
-    `<button class="nav-tab ${state.view==="notes"?"active":""}" onclick="state.view='notes';updateHash();render()">Notes</button>`;
+    `<button class="nav-tab ${state.view==="notes"?"active":""}" onclick="state.view='notes';updateHash();render()">Notes</button>` +
+    `<button class="nav-tab ${state.view==="tasks"?"active":""}" onclick="state.view='tasks';updateHash();render()">Tasks</button>`;
 
   const app = document.getElementById("app");
   if (!state.loaded) { app.innerHTML='<div class="loading">Loading Cache...</div>'; return; }
@@ -610,14 +614,11 @@ function renderNotes(app) {
 
     html += `<input class="note-title-input" id="noteTitleInput" value="${esc(activeNote.title)}" oninput="updateNoteField('title',this.value)" placeholder="Note title">`;
     html += `<textarea class="note-textarea" oninput="updateNoteField('content',this.value)" placeholder="Start writing...">${esc(activeNote.content||"")}</textarea>`;
+    html += `<div id="notesSaveIndicator" style="font-size:11px;font-family:var(--mono);margin-top:6px;height:16px;"></div>`;
   } else {
     html += '<div class="note-empty">Select a note or click + to create one</div>';
   }
   html += '</div></div>';
-
-  if (state.saveStatus) {
-    html += `<div style="position:fixed;top:50px;right:16px;font-size:11px;font-family:var(--mono);" class="${state.saveStatus.includes("✓")?"save-ok":"save-err"}">${esc(state.saveStatus)}</div>`;
-  }
 
   app.innerHTML = html;
 }
@@ -633,10 +634,17 @@ function updateNoteField(field, value) {
     const note = state.notes.find(n=>n.id===state.activeNoteId);
     if (note) note[field] = value;
   }
-  // Update sidebar label if title changed
+  // Update sidebar label directly via DOM (no re-render)
   if (field === "title") {
-    const sidebarItems = document.querySelectorAll(".ns-item-label");
-    // Just re-render sidebar portion would be heavy, so debounce a full render
+    const activeId = state.activeSubId || state.activeNoteId;
+    const items = document.querySelectorAll(".ns-item");
+    items.forEach(item => {
+      const onclick = item.getAttribute("onclick") || "";
+      if (onclick.includes(activeId)) {
+        const label = item.querySelector(".ns-item-label");
+        if (label) label.textContent = value || "Untitled";
+      }
+    });
   }
   saveNotesDebounced();
 }
