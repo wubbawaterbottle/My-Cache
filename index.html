@@ -362,8 +362,8 @@ function addNoteToList(parentPath) {
   setTimeout(() => { const el = document.getElementById("noteTitleInput"); if (el) { el.focus(); el.select(); } }, 50);
 }
 
-function confirmDeleteNote(pathJson) {
-  state.confirmDeletePath = JSON.parse(pathJson);
+function confirmDeleteNote(pathStr) {
+  state.confirmDeletePath = pathStr.split("|");
   render();
 }
 
@@ -620,7 +620,7 @@ function renderNotes(app) {
   const activeNote = getActiveNote();
   if (activeNote) {
     html += '<div class="note-sub-header">';
-    html += `<button class="note-sub-add" onclick="addNoteToList(${JSON.stringify(state.activePath)})">+ Sub-note</button>`;
+    html += `<button class="note-sub-add" onclick="addNoteToList(pathFromStr('${state.activePath.join("|")}'))">+ Sub-note</button>`;
     html += '</div>';
     html += `<input class="note-title-input" id="noteTitleInput" value="${esc(activeNote.title)}" oninput="updateNoteField('title',this.value)" placeholder="Note title">`;
     html += `<textarea class="note-textarea" oninput="updateNoteField('content',this.value)" placeholder="Start writing...">${esc(activeNote.content||"")}</textarea>`;
@@ -640,12 +640,12 @@ function renderNoteTree(list, parentPath, depth) {
 
   list.forEach((note, i) => {
     const path = [...parentPath, note.id];
-    const pathJson = JSON.stringify(path);
-    const isActive = state.activePath && state.activePath.join("/") === path.join("/");
+    const pathStr = path.join("|");
+    const isActive = state.activePath && state.activePath.join("|") === pathStr;
     const hasChildren = note.children && note.children.length > 0;
     const isExpanded = expandedNodes[note.id];
 
-    html += `<div class="ns-item ${isActive?"active":""}" data-note-id="${note.id}" style="padding-left:${12+indent}px" onclick="navigateToNote(${pathJson})">`;
+    html += `<div class="ns-item ${isActive?"active":""}" data-note-id="${note.id}" style="padding-left:${12+indent}px" onclick="navByPath('${pathStr}')">`;
 
     // Expand arrow
     if (hasChildren) {
@@ -657,9 +657,9 @@ function renderNoteTree(list, parentPath, depth) {
     html += `<span class="ns-item-label">${esc(note.title)}</span>`;
 
     html += '<div class="ns-item-actions">';
-    html += `<button class="ns-link-btn" onclick="event.stopPropagation();copyNoteLink(${pathJson},this)" title="Copy link">🔗</button>`;
-    html += `<div class="ns-move-btns"><button class="ns-move-btn" onclick="event.stopPropagation();moveNoteInList(${pathJson},-1)">▲</button><button class="ns-move-btn" onclick="event.stopPropagation();moveNoteInList(${pathJson},1)">▼</button></div>`;
-    html += `<button class="ns-act-btn" onclick="event.stopPropagation();confirmDeleteNote('${esc(pathJson)}')" title="Delete">✕</button>`;
+    html += `<button class="ns-link-btn" onclick="event.stopPropagation();copyLinkByPath('${pathStr}',this)" title="Copy link">🔗</button>`;
+    html += `<div class="ns-move-btns"><button class="ns-move-btn" onclick="event.stopPropagation();moveNoteInList(pathFromStr('${pathStr}'),-1)">▲</button><button class="ns-move-btn" onclick="event.stopPropagation();moveNoteInList(pathFromStr('${pathStr}'),1)">▼</button></div>`;
+    html += `<button class="ns-act-btn" onclick="event.stopPropagation();confirmDeleteNote('${pathStr}')" title="Delete">✕</button>`;
     html += '</div></div>';
 
     // Render children recursively if expanded
@@ -670,6 +670,11 @@ function renderNoteTree(list, parentPath, depth) {
 
   return html;
 }
+
+// Path helpers — convert between pipe-separated string and array
+function pathFromStr(s) { return s.split("|"); }
+function navByPath(s) { navigateToNote(pathFromStr(s)); }
+function copyLinkByPath(s, btn) { copyNoteLink(pathFromStr(s), btn); }
 
 function updateNoteField(field, value) {
   const note = getActiveNote();
