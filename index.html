@@ -9,522 +9,440 @@
 <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@300;400&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg: #1a1714;
-  --bg2: #211e1a;
-  --border: #2a2520;
-  --border2: #3a3530;
-  --text: #c4b5a0;
-  --text2: #d4cfc6;
-  --text3: #e0d5c4;
-  --dim: #6a6560;
-  --dim2: #5a5550;
-  --dim3: #4a4640;
-  --amber: #d4a056;
-  --amber2: #c9a068;
-  --blue: #7ba0c4;
-  --purple: #9b8ec4;
-  --green: #8b9a7b;
-  --red: #8a4040;
-  --redborder: #4a2020;
+  --bg: #1a1714; --bg2: #211e1a; --bg3: #161310;
+  --border: #2a2520; --border2: #3a3530;
+  --text: #c4b5a0; --text2: #d4cfc6; --text3: #e0d5c4;
+  --dim: #6a6560; --dim2: #5a5550; --dim3: #4a4640;
+  --amber: #d4a056; --amber2: #c9a068;
+  --blue: #7ba0c4; --purple: #9b8ec4; --green: #8b9a7b;
+  --red: #8a4040; --redborder: #4a2020;
   --mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
   --serif: 'EB Garamond', Georgia, serif;
 }
 * { margin:0; padding:0; box-sizing:border-box; }
-body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: var(--serif);
-  min-height: 100vh;
-  -webkit-font-smoothing: antialiased;
+body { background: var(--bg); color: var(--text); font-family: var(--serif); min-height:100vh; -webkit-font-smoothing:antialiased; }
+
+/* === NAV TABS (Tasks / Notes) === */
+.nav-tabs { display:flex; border-bottom:1px solid var(--border); margin-bottom:0; }
+.nav-tab { flex:1; padding:12px; text-align:center; font-size:14px; font-family:var(--serif); color:var(--dim); cursor:pointer; border-bottom:2px solid transparent; transition:all 0.15s; background:transparent; border-top:none; border-left:none; border-right:none; }
+.nav-tab.active { color:var(--amber); border-bottom-color:var(--amber); }
+
+.container { max-width:600px; margin:0 auto; padding:20px 16px; }
+.header { margin-bottom:20px; border-bottom:1px solid var(--border); padding-bottom:14px; }
+.header-top { display:flex; justify-content:space-between; align-items:baseline; }
+.title { font-size:26px; font-weight:400; letter-spacing:6px; color:var(--text3); }
+.header-right { display:flex; align-items:baseline; gap:12px; }
+.save-status { font-size:11px; font-family:var(--mono); transition:opacity 0.3s; }
+.save-ok { color:var(--green); } .save-err { color:var(--red); }
+.count { font-size:13px; color:var(--dim); font-family:var(--mono); }
+.subtitle { font-size:14px; color:var(--dim); margin-top:6px; }
+
+.mode-bar { display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap; }
+.mode-btn { display:flex; align-items:center; gap:4px; padding:8px 14px; border-radius:6px; border:1px solid var(--border2); background:transparent; cursor:pointer; font-size:13px; font-family:var(--serif); color:var(--dim); transition:all 0.2s; }
+.mode-icon { font-size:16px; margin-right:4px; }
+
+.cat-bar { display:flex; gap:2px; margin-bottom:12px; flex-wrap:wrap; border-bottom:1px solid var(--border); padding-bottom:2px; }
+.cat-btn { background:transparent; border:none; cursor:pointer; font-size:12px; padding:4px 10px; font-family:var(--mono); color:var(--dim2); transition:all 0.15s; border-bottom:1px solid transparent; }
+.cat-btn.active { color:var(--text); border-bottom-color:var(--text); }
+
+.top-bar { display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap; }
+.btn-add { background:var(--border); border:1px solid var(--border2); color:var(--text); padding:8px 16px; border-radius:6px; font-size:13px; cursor:pointer; font-family:var(--serif); }
+.btn-done { background:transparent; border:1px solid var(--border); color:var(--dim2); padding:8px 14px; border-radius:6px; font-size:12px; cursor:pointer; font-family:var(--mono); }
+.btn-cat { background:transparent; border:1px solid var(--border); color:var(--dim2); padding:8px 12px; border-radius:6px; font-size:12px; cursor:pointer; font-family:var(--mono); }
+
+.panel { background:var(--bg2); border:1px solid var(--border2); border-radius:8px; padding:16px; margin-bottom:16px; }
+.input { width:100%; background:var(--bg); border:1px solid var(--border2); color:var(--text2); padding:10px 12px; border-radius:6px; font-size:15px; font-family:var(--serif); margin-bottom:10px; outline:none; box-sizing:border-box; }
+.form-row { display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap; }
+.form-row-sliders { display:flex; gap:12px; margin-bottom:10px; flex-wrap:wrap; width:100%; }
+.select { background:var(--bg); border:1px solid var(--border2); color:var(--text); padding:6px 10px; border-radius:4px; font-size:12px; font-family:var(--mono); }
+.slider-label { font-size:13px; color:#7a7568; font-family:var(--mono); display:flex; flex-direction:column; gap:4px; flex:1; min-width:140px; }
+.slider { -webkit-appearance:none; appearance:none; width:100%; height:8px; background:var(--border2); border-radius:4px; outline:none; cursor:pointer; margin:8px 0; touch-action:none; }
+.slider::-webkit-slider-thumb { -webkit-appearance:none; appearance:none; width:28px; height:28px; border-radius:50%; background:var(--amber); cursor:pointer; border:2px solid var(--bg); box-shadow:0 0 4px rgba(0,0,0,0.4); }
+.slider::-moz-range-track { height:8px; background:var(--border2); border-radius:4px; border:none; }
+.slider::-moz-range-thumb { width:28px; height:28px; border-radius:50%; background:var(--amber); cursor:pointer; border:2px solid var(--bg); box-shadow:0 0 4px rgba(0,0,0,0.4); }
+.slider:active::-webkit-slider-thumb { transform:scale(1.2); }
+.slider:active::-moz-range-thumb { transform:scale(1.2); }
+.btn-submit { width:100%; background:var(--amber); border:none; color:var(--bg); padding:10px; border-radius:6px; font-size:15px; cursor:pointer; font-family:var(--serif); font-weight:600; }
+
+.add-cat-row { display:flex; gap:8px; margin-bottom:12px; align-items:center; }
+.add-cat-row .input { margin-bottom:0; flex:1; }
+.btn-cat-save { background:var(--amber); border:none; color:var(--bg); padding:10px 16px; border-radius:6px; font-size:13px; cursor:pointer; font-family:var(--serif); font-weight:600; flex-shrink:0; }
+
+.edit-cats { background:var(--bg2); border:1px solid var(--border2); border-radius:8px; padding:16px; margin-bottom:16px; }
+.edit-cats-title { font-size:12px; color:var(--dim); margin-bottom:12px; font-family:var(--mono); text-transform:uppercase; letter-spacing:2px; }
+.edit-cats-list { display:flex; flex-direction:column; gap:6px; margin-bottom:14px; }
+.edit-cat-item { display:flex; align-items:center; justify-content:space-between; padding:8px 12px; background:var(--bg); border-radius:6px; border:1px solid var(--border); }
+.edit-cat-name { font-size:13px; color:var(--text2); font-family:var(--serif); cursor:pointer; }
+.edit-cat-name:hover { color:var(--amber); }
+.edit-cat-count { font-size:10px; color:var(--dim); font-family:var(--mono); margin-left:8px; }
+.edit-cat-rename { display:flex; gap:6px; align-items:center; flex:1; }
+.edit-cat-rename .input { margin-bottom:0; font-size:13px; padding:6px 10px; }
+.btn-rename-save { background:var(--amber); border:none; color:var(--bg); padding:6px 12px; border-radius:4px; font-size:11px; cursor:pointer; font-family:var(--mono); flex-shrink:0; }
+.btn-rename-cancel { background:transparent; border:1px solid var(--border2); color:var(--dim); padding:6px 10px; border-radius:4px; font-size:11px; cursor:pointer; font-family:var(--mono); flex-shrink:0; }
+.btn-remove-cat { background:transparent; border:none; color:var(--red); padding:4px 8px; font-size:14px; cursor:pointer; opacity:0.6; transition:opacity 0.15s; }
+.btn-remove-cat:hover { opacity:1; }
+.btn-remove-cat.disabled { opacity:0.15; cursor:not-allowed; }
+.edit-cats-divider { height:1px; background:var(--border); margin:4px 0 14px 0; }
+.edit-cats-add-label { font-size:11px; color:var(--dim); font-family:var(--mono); margin-bottom:6px; }
+
+.done-section { background:#1e1b17; border-radius:8px; padding:16px; margin-bottom:16px; }
+.done-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+.done-label { color:var(--dim); font-size:12px; text-transform:uppercase; letter-spacing:2px; }
+.btn-clear { background:transparent; border:none; color:var(--dim2); font-size:11px; cursor:pointer; font-family:var(--mono); }
+.done-row { display:flex; gap:8px; padding:6px 0; align-items:center; cursor:pointer; }
+.done-check { color:var(--green); font-size:12px; }
+.done-title { font-size:13px; color:var(--dim2); text-decoration:line-through; }
+.done-expanded { padding:6px 0 10px 20px; }
+.done-meta { font-size:11px; color:var(--dim2); margin-bottom:8px; font-family:var(--mono); }
+.done-actions { display:flex; gap:8px; }
+.btn-reinstate { background:var(--border); border:1px solid var(--border2); color:var(--text); padding:4px 12px; border-radius:4px; font-size:11px; cursor:pointer; font-family:var(--mono); }
+
+.group { margin-bottom:24px; }
+.group-header { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+.group-dot { width:6px; height:6px; border-radius:50%; }
+.group-label { font-size:11px; text-transform:uppercase; letter-spacing:3px; font-family:var(--mono); }
+.group-line { flex:1; height:1px; background:var(--border); }
+
+.task-row { display:flex; gap:10px; padding:10px 8px; border-radius:6px; cursor:pointer; transition:background 0.15s; margin-bottom:2px; border-left:2px solid transparent; }
+.task-row:active { background:var(--border); }
+.btn-check { background:transparent; border:none; color:var(--dim2); font-size:18px; cursor:pointer; padding:2px 4px; line-height:1; flex-shrink:0; }
+.task-content { flex:1; min-width:0; }
+.task-title { font-size:15px; color:var(--text2); line-height:1.4; }
+.task-meta { display:flex; gap:12px; margin-top:4px; font-size:11px; color:var(--dim2); font-family:var(--mono); }
+.task-score { color:#7a7568; }
+.task-expanded { margin-top:10px; padding-top:8px; border-top:1px solid var(--border); }
+.score-row { display:flex; gap:20px; font-size:12px; color:#7a7568; margin-bottom:8px; font-family:var(--mono); }
+.task-actions { display:flex; gap:8px; }
+.btn-edit { background:var(--border); border:1px solid var(--border2); color:var(--text); padding:4px 12px; border-radius:4px; font-size:11px; cursor:pointer; font-family:var(--mono); }
+.btn-delete { background:transparent; border:1px solid var(--redborder); color:var(--red); padding:4px 12px; border-radius:4px; font-size:11px; cursor:pointer; font-family:var(--mono); }
+.btn-save-edit { background:var(--amber); border:none; color:var(--bg); padding:6px 16px; border-radius:4px; font-size:12px; cursor:pointer; font-family:var(--serif); font-weight:600; }
+.btn-cancel-edit { background:transparent; border:1px solid var(--border2); color:var(--dim); padding:6px 14px; border-radius:4px; font-size:12px; cursor:pointer; font-family:var(--mono); }
+
+.empty { text-align:center; padding:40px; color:var(--dim); font-size:14px; }
+.loading { display:flex; justify-content:center; align-items:center; min-height:300px; color:var(--text); font-size:20px; }
+.footer { text-align:center; margin-top:32px; padding-top:16px; border-top:1px solid var(--border); font-size:11px; color:var(--dim3); font-family:var(--mono); }
+.error-banner { background:#2a1a1a; border:1px solid var(--redborder); color:var(--red); padding:10px 14px; border-radius:6px; margin-bottom:16px; font-size:13px; font-family:var(--mono); }
+
+/* === NOTES SYSTEM === */
+.notes-container { display:flex; gap:0; min-height:70vh; }
+.notes-sidebar { width:200px; flex-shrink:0; border-right:1px solid var(--border); padding:12px 0; overflow-y:auto; }
+.notes-main { flex:1; padding:16px; display:flex; flex-direction:column; }
+.ns-header { display:flex; justify-content:space-between; align-items:center; padding:0 12px 10px; border-bottom:1px solid var(--border); margin-bottom:8px; }
+.ns-title { font-size:12px; color:var(--dim); font-family:var(--mono); text-transform:uppercase; letter-spacing:2px; }
+.ns-add { background:transparent; border:none; color:var(--amber); font-size:18px; cursor:pointer; padding:2px 6px; }
+
+.ns-item { display:flex; align-items:center; padding:8px 12px; cursor:pointer; transition:background 0.1s; gap:6px; font-size:13px; color:var(--dim2); border-left:2px solid transparent; }
+.ns-item:hover { background:var(--bg2); }
+.ns-item.active { background:var(--bg2); color:var(--text2); border-left-color:var(--amber); }
+.ns-item-label { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ns-item-arrow { font-size:10px; color:var(--dim3); transition:transform 0.15s; }
+.ns-item-arrow.open { transform:rotate(90deg); }
+.ns-sub { padding-left:16px; }
+.ns-item-actions { display:flex; gap:2px; opacity:0; transition:opacity 0.15s; }
+.ns-item:hover .ns-item-actions { opacity:1; }
+.ns-act-btn { background:transparent; border:none; color:var(--dim); font-size:11px; cursor:pointer; padding:2px 4px; }
+.ns-act-btn:hover { color:var(--text); }
+.ns-link-btn { background:transparent; border:none; color:var(--dim3); font-size:10px; cursor:pointer; padding:2px 4px; }
+.ns-link-btn:hover { color:var(--amber); }
+.ns-link-copied { color:var(--green) !important; }
+.ns-move-btns { display:flex; flex-direction:column; gap:0; }
+.ns-move-btn { background:transparent; border:none; color:var(--dim3); font-size:9px; cursor:pointer; padding:0 4px; line-height:1.2; }
+.ns-move-btn:hover { color:var(--text); }
+
+.note-editor { flex:1; display:flex; flex-direction:column; }
+.note-title-input { background:transparent; border:none; color:var(--text3); font-size:20px; font-family:var(--serif); padding:4px 0; margin-bottom:12px; outline:none; border-bottom:1px solid var(--border); }
+.note-textarea { flex:1; width:100%; background:transparent; border:1px solid var(--border); color:var(--text2); font-size:15px; font-family:var(--serif); padding:12px; border-radius:6px; outline:none; resize:none; min-height:300px; line-height:1.6; }
+.note-empty { color:var(--dim); font-size:14px; text-align:center; padding:60px 20px; }
+.note-sub-header { display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+.note-sub-add { background:var(--border); border:1px solid var(--border2); color:var(--text); padding:4px 10px; border-radius:4px; font-size:11px; cursor:pointer; font-family:var(--mono); }
+
+@media (max-width:500px) {
+  .notes-sidebar { width:150px; }
+  .ns-item { padding:8px 8px; font-size:12px; }
 }
-.container { max-width: 600px; margin: 0 auto; padding: 24px 16px; }
-.header { margin-bottom: 24px; border-bottom: 1px solid var(--border); padding-bottom: 16px; }
-.header-top { display: flex; justify-content: space-between; align-items: baseline; }
-.title { font-size: 28px; font-weight: 400; letter-spacing: 6px; color: var(--text3); }
-.header-right { display: flex; align-items: baseline; gap: 12px; }
-.save-status { font-size: 11px; font-family: var(--mono); transition: opacity 0.3s; }
-.save-ok { color: var(--green); }
-.save-err { color: var(--red); }
-.count { font-size: 13px; color: var(--dim); font-family: var(--mono); }
-.subtitle { font-size: 14px; color: var(--dim); margin-top: 6px; }
-
-.mode-bar { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
-.mode-btn { display: flex; align-items: center; gap: 4px; padding: 8px 14px; border-radius: 6px; border: 1px solid var(--border2); background: transparent; cursor: pointer; font-size: 13px; font-family: var(--serif); color: var(--dim); transition: all 0.2s; }
-.mode-btn.active { border-color: currentColor; }
-.mode-icon { font-size: 16px; margin-right: 4px; }
-
-.cat-bar { display: flex; gap: 2px; margin-bottom: 12px; flex-wrap: wrap; border-bottom: 1px solid var(--border); padding-bottom: 2px; }
-.cat-btn { background: transparent; border: none; cursor: pointer; font-size: 12px; padding: 4px 10px; font-family: var(--mono); color: var(--dim2); transition: all 0.15s; border-bottom: 1px solid transparent; }
-.cat-btn.active { color: var(--text); border-bottom-color: var(--text); }
-
-.top-bar { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
-.btn-add { background: var(--border); border: 1px solid var(--border2); color: var(--text); padding: 8px 16px; border-radius: 6px; font-size: 13px; cursor: pointer; font-family: var(--serif); }
-.btn-done { background: transparent; border: 1px solid var(--border); color: var(--dim2); padding: 8px 14px; border-radius: 6px; font-size: 12px; cursor: pointer; font-family: var(--mono); }
-.btn-cat { background: transparent; border: 1px solid var(--border); color: var(--dim2); padding: 8px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; font-family: var(--mono); }
-
-.panel { background: var(--bg2); border: 1px solid var(--border2); border-radius: 8px; padding: 16px; margin-bottom: 16px; }
-.input { width: 100%; background: var(--bg); border: 1px solid var(--border2); color: var(--text2); padding: 10px 12px; border-radius: 6px; font-size: 15px; font-family: var(--serif); margin-bottom: 10px; outline: none; box-sizing: border-box; }
-.form-row { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
-.form-row-sliders { display: flex; gap: 12px; margin-bottom: 10px; flex-wrap: wrap; width: 100%; }
-.select { background: var(--bg); border: 1px solid var(--border2); color: var(--text); padding: 6px 10px; border-radius: 4px; font-size: 12px; font-family: var(--mono); }
-.slider-label { font-size: 13px; color: #7a7568; font-family: var(--mono); display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 140px; }
-.slider {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 100%;
-  height: 8px;
-  background: var(--border2);
-  border-radius: 4px;
-  outline: none;
-  cursor: pointer;
-  margin: 8px 0;
-  touch-action: none;
-}
-.slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: var(--amber);
-  cursor: pointer;
-  border: 2px solid var(--bg);
-  box-shadow: 0 0 4px rgba(0,0,0,0.4);
-}
-.slider::-moz-range-track {
-  height: 8px;
-  background: var(--border2);
-  border-radius: 4px;
-  border: none;
-}
-.slider::-moz-range-thumb {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: var(--amber);
-  cursor: pointer;
-  border: 2px solid var(--bg);
-  box-shadow: 0 0 4px rgba(0,0,0,0.4);
-}
-.slider:active::-webkit-slider-thumb { transform: scale(1.2); }
-.slider:active::-moz-range-thumb { transform: scale(1.2); }
-.btn-submit { width: 100%; background: var(--amber); border: none; color: var(--bg); padding: 10px; border-radius: 6px; font-size: 15px; cursor: pointer; font-family: var(--serif); font-weight: 600; }
-
-.add-cat-row { display: flex; gap: 8px; margin-bottom: 12px; align-items: center; }
-.add-cat-row .input { margin-bottom: 0; flex: 1; }
-.btn-cat-save { background: var(--amber); border: none; color: var(--bg); padding: 10px 16px; border-radius: 6px; font-size: 13px; cursor: pointer; font-family: var(--serif); font-weight: 600; flex-shrink: 0; }
-
-.edit-cats { background: var(--bg2); border: 1px solid var(--border2); border-radius: 8px; padding: 16px; margin-bottom: 16px; }
-.edit-cats-title { font-size: 12px; color: var(--dim); margin-bottom: 12px; font-family: var(--mono); text-transform: uppercase; letter-spacing: 2px; }
-.edit-cats-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
-.edit-cat-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: var(--bg); border-radius: 6px; border: 1px solid var(--border); }
-.edit-cat-name { font-size: 13px; color: var(--text2); font-family: var(--serif); cursor: pointer; }
-.edit-cat-name:hover { color: var(--amber); }
-.edit-cat-count { font-size: 10px; color: var(--dim); font-family: var(--mono); margin-left: 8px; }
-.edit-cat-rename { display: flex; gap: 6px; align-items: center; flex: 1; }
-.edit-cat-rename .input { margin-bottom: 0; font-size: 13px; padding: 6px 10px; }
-.btn-rename-save { background: var(--amber); border: none; color: var(--bg); padding: 6px 12px; border-radius: 4px; font-size: 11px; cursor: pointer; font-family: var(--mono); flex-shrink: 0; }
-.btn-rename-cancel { background: transparent; border: 1px solid var(--border2); color: var(--dim); padding: 6px 10px; border-radius: 4px; font-size: 11px; cursor: pointer; font-family: var(--mono); flex-shrink: 0; }
-.btn-remove-cat { background: transparent; border: none; color: var(--red); padding: 4px 8px; font-size: 14px; cursor: pointer; opacity: 0.6; transition: opacity 0.15s; }
-.btn-remove-cat:hover { opacity: 1; }
-.btn-remove-cat.disabled { opacity: 0.15; cursor: not-allowed; }
-.edit-cats-divider { height: 1px; background: var(--border); margin: 4px 0 14px 0; }
-.edit-cats-add-label { font-size: 11px; color: var(--dim); font-family: var(--mono); margin-bottom: 6px; }
-
-.done-section { background: #1e1b17; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
-.done-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-.done-label { color: var(--dim); font-size: 12px; text-transform: uppercase; letter-spacing: 2px; }
-.btn-clear { background: transparent; border: none; color: var(--dim2); font-size: 11px; cursor: pointer; font-family: var(--mono); }
-.done-row { display: flex; gap: 8px; padding: 6px 0; align-items: center; cursor: pointer; }
-.done-check { color: var(--green); font-size: 12px; }
-.done-title { font-size: 13px; color: var(--dim2); text-decoration: line-through; }
-.done-expanded { padding: 6px 0 10px 20px; }
-.done-meta { font-size: 11px; color: var(--dim2); margin-bottom: 8px; font-family: var(--mono); }
-.done-actions { display: flex; gap: 8px; }
-.btn-reinstate { background: var(--border); border: 1px solid var(--border2); color: var(--text); padding: 4px 12px; border-radius: 4px; font-size: 11px; cursor: pointer; font-family: var(--mono); }
-
-.group { margin-bottom: 24px; }
-.group-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-.group-dot { width: 6px; height: 6px; border-radius: 50%; }
-.group-label { font-size: 11px; text-transform: uppercase; letter-spacing: 3px; font-family: var(--mono); }
-.group-line { flex: 1; height: 1px; background: var(--border); }
-
-.task-row { display: flex; gap: 10px; padding: 10px 8px; border-radius: 6px; cursor: pointer; transition: background 0.15s; margin-bottom: 2px; border-left: 2px solid transparent; }
-.task-row:active { background: var(--border); }
-.btn-check { background: transparent; border: none; color: var(--dim2); font-size: 18px; cursor: pointer; padding: 2px 4px; line-height: 1; flex-shrink: 0; }
-.task-content { flex: 1; min-width: 0; }
-.task-title { font-size: 15px; color: var(--text2); line-height: 1.4; }
-.task-meta { display: flex; gap: 12px; margin-top: 4px; font-size: 11px; color: var(--dim2); font-family: var(--mono); }
-.task-score { color: #7a7568; }
-.task-expanded { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--border); }
-.score-row { display: flex; gap: 20px; font-size: 12px; color: #7a7568; margin-bottom: 8px; font-family: var(--mono); }
-.task-actions { display: flex; gap: 8px; }
-.btn-edit { background: var(--border); border: 1px solid var(--border2); color: var(--text); padding: 4px 12px; border-radius: 4px; font-size: 11px; cursor: pointer; font-family: var(--mono); }
-.btn-delete { background: transparent; border: 1px solid var(--redborder); color: var(--red); padding: 4px 12px; border-radius: 4px; font-size: 11px; cursor: pointer; font-family: var(--mono); }
-.btn-save-edit { background: var(--amber); border: none; color: var(--bg); padding: 6px 16px; border-radius: 4px; font-size: 12px; cursor: pointer; font-family: var(--serif); font-weight: 600; }
-.btn-cancel-edit { background: transparent; border: 1px solid var(--border2); color: var(--dim); padding: 6px 14px; border-radius: 4px; font-size: 12px; cursor: pointer; font-family: var(--mono); }
-
-.empty { text-align: center; padding: 40px; color: var(--dim); font-size: 14px; }
-.loading { display: flex; justify-content: center; align-items: center; min-height: 300px; color: var(--text); font-size: 20px; }
-.footer { text-align: center; margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--border); font-size: 11px; color: var(--dim3); font-family: var(--mono); }
-.error-banner { background: #2a1a1a; border: 1px solid var(--redborder); color: var(--red); padding: 10px 14px; border-radius: 6px; margin-bottom: 16px; font-size: 13px; font-family: var(--mono); }
 </style>
 </head>
 <body>
-<div class="container" id="app">
-  <div class="loading">Loading Cache...</div>
-</div>
+
+<div class="nav-tabs" id="navTabs"></div>
+<div class="container" id="app"><div class="loading">Loading Cache...</div></div>
 
 <script>
-// ============================================================
-// THE CACHE — Frontend App
-// Talks to Google Sheets via Apps Script Web App
-// ============================================================
-
-const API_URL = "https://script.google.com/macros/s/AKfycbxz4KvkRNq643aLEQjPShVd3Z7PDXes7askgKbyA658HE-b659oTAw-YVG_bSmWRItk4Q/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbyfh-2L6bSvtasV4rm6eLnt20UtFmhDK5ME7beg347Pvjw2DJ8Q4ax4EfbjPEyya4dYtw/exec";
 
 const MODES = {
   all: { label: "All Tasks", icon: "◉", color: "#c4b5a0", desc: "Everything" },
-  body: { label: "Body", icon: "⚡", color: "#d4a056", desc: "Calls, errands, physical tasks" },
-  focus: { label: "Focus", icon: "✦", color: "#7ba0c4", desc: "Editing, creative, deep work" },
-  work: { label: "Work", icon: "◆", color: "#9b8ec4", desc: "Business tasks, admin, follow-ups" },
+  mind: { label: "Mind", icon: "✦", color: "#7ba0c4", desc: "Thinking, planning, creative ideation" },
+  film: { label: "Film", icon: "◈", color: "#d4a056", desc: "Editing, shooting, post-production" },
+  jppf: { label: "JPPF", icon: "◆", color: "#9b8ec4", desc: "Business tasks, clients, admin" },
 };
 
 const TIMELINES = ["Today", "This Week", "This Month", "This Quarter", "Later"];
-const TIMELINE_COLORS = {
-  "Today": "#d4a056", "This Week": "#c9a068", "This Month": "#c4b5a0",
-  "This Quarter": "#7a7568", "Later": "#4a4640",
-};
+const TIMELINE_COLORS = { "Today":"#d4a056", "This Week":"#c9a068", "This Month":"#c4b5a0", "This Quarter":"#7a7568", "Later":"#4a4640" };
 
-// App State
 let state = {
-  tasks: [],
-  doneTasks: [],
-  categories: ["JPPF Post", "JPPF General", "JPPF Chores", "Hatman", "General", "Chores"],
-  mode: "all",
-  filterCat: "all",
-  showAdd: false,
-  showDone: false,
-  showEditCats: false,
-  expandedId: null,
-  editingId: null,
-  editData: null,
-  expandedDoneId: null,
-  newTask: { title: "", category: "JPPF General", timeline: "This Quarter", valuable: 3, urgency: 3, mode: "body" },
-  newCatName: "",
-  renamingCat: null,
-  renameCatValue: "",
-  saveStatus: "",
-  loaded: false,
-  error: null,
+  view: "tasks", // "tasks" or "notes"
+  tasks:[], doneTasks:[], categories:["JPPF Post","JPPF General","JPPF Chores","Hatman","General","Chores"],
+  mode:"all", filterCat:"all",
+  showAdd:false, showDone:false, showEditCats:false,
+  expandedId:null, editingId:null, editData:null, expandedDoneId:null,
+  newTask:{ title:"", category:"JPPF General", timeline:"This Quarter", valuable:3, urgency:3, mode:"mind" },
+  newCatName:"", renamingCat:null, renameCatValue:"",
+  saveStatus:"", loaded:false, error:null,
+  // Notes
+  notes:[], activeNoteId:null, activeSubId:null, renamingNoteId:null, renameNoteValue:"",
+  notesDirty:false, notesSaveTimer:null,
 };
 
-// ============================================================
-// API CALLS
-// ============================================================
+// === JSONP API ===
 function apiCall(params) {
   return new Promise((resolve) => {
-    const callbackName = "jsonpCallback_" + Date.now() + "_" + Math.floor(Math.random()*10000);
-    const timeout = setTimeout(() => {
-      delete window[callbackName];
-      if (script.parentNode) script.parentNode.removeChild(script);
-      resolve({ error: "Request timed out" });
-    }, 15000);
-
-    window[callbackName] = function(data) {
-      clearTimeout(timeout);
-      delete window[callbackName];
-      if (script.parentNode) script.parentNode.removeChild(script);
-      resolve(data);
-    };
-
-    const url = API_URL + "?" + params + "&callback=" + callbackName;
-    const script = document.createElement("script");
-    script.src = url;
-    script.onerror = function() {
-      clearTimeout(timeout);
-      delete window[callbackName];
-      if (script.parentNode) script.parentNode.removeChild(script);
-      resolve({ error: "Network error" });
-    };
-    document.body.appendChild(script);
+    const cb = "cb_" + Date.now() + "_" + Math.floor(Math.random()*10000);
+    const timeout = setTimeout(() => { delete window[cb]; if(s.parentNode)s.parentNode.removeChild(s); resolve({error:"Timeout"}); }, 15000);
+    window[cb] = function(data) { clearTimeout(timeout); delete window[cb]; if(s.parentNode)s.parentNode.removeChild(s); resolve(data); };
+    var s = document.createElement("script");
+    s.src = API_URL + "?" + params + "&callback=" + cb;
+    s.onerror = function() { clearTimeout(timeout); delete window[cb]; if(s.parentNode)s.parentNode.removeChild(s); resolve({error:"Network error"}); };
+    document.body.appendChild(s);
   });
 }
+function apiGet(action) { return apiCall("action=" + action); }
+function apiPost(payload) { return apiCall("payload=" + encodeURIComponent(JSON.stringify(payload))); }
 
-async function apiGet(action) {
-  return apiCall("action=" + action);
-}
+function showSave(msg, ok) { state.saveStatus = msg; render(); setTimeout(() => { state.saveStatus = ""; render(); }, ok ? 1500 : 3000); }
 
-async function apiPost(payload) {
-  const encoded = encodeURIComponent(JSON.stringify(payload));
-  return apiCall("payload=" + encoded);
-}
-
-function showSave(msg, ok) {
-  state.saveStatus = msg;
-  render();
-  setTimeout(() => { state.saveStatus = ""; render(); }, ok ? 1500 : 3000);
-}
-
-// Background sync — silently refreshes data from Sheet
 async function bgSync() {
   try {
     const data = await apiGet("getAll");
     if (!data.error) {
       state.tasks = data.tasks || [];
       state.doneTasks = data.done || [];
-      if (data.settings && data.settings.categories) {
-        state.categories = data.settings.categories.split(",").map(s => s.trim()).filter(Boolean);
-      }
+      if (data.settings && data.settings.categories) state.categories = data.settings.categories.split(",").map(s=>s.trim()).filter(Boolean);
+      if (data.notes) state.notes = data.notes;
       render();
     }
   } catch(e) {}
 }
 
-// ============================================================
-// DATA OPERATIONS (optimistic — UI updates instantly)
-// ============================================================
+// === DATA OPS (optimistic) ===
 async function loadAll() {
   const data = await apiGet("getAll");
-  if (data.error) {
-    state.error = "Failed to load: " + data.error;
-    state.loaded = true;
-    render();
-    return;
-  }
+  if (data.error) { state.error = "Failed to load: " + data.error; state.loaded = true; render(); return; }
   state.tasks = data.tasks || [];
   state.doneTasks = data.done || [];
-  if (data.settings && data.settings.categories) {
-    state.categories = data.settings.categories.split(",").map(s => s.trim()).filter(Boolean);
-  }
-  state.loaded = true;
-  state.error = null;
-  render();
+  if (data.settings && data.settings.categories) state.categories = data.settings.categories.split(",").map(s=>s.trim()).filter(Boolean);
+  state.notes = data.notes || [];
+  state.loaded = true; state.error = null; render();
 }
 
 async function addTask() {
-  const t = state.newTask;
-  if (!t.title.trim()) return;
-  // Optimistic: add to UI immediately
+  const t = state.newTask; if (!t.title.trim()) return;
   const tempId = "temp_" + Date.now();
   const priority = ((t.valuable + t.urgency) / 2);
-  state.tasks.push({ id: tempId, title: t.title, category: t.category, timeline: t.timeline, priority: Math.round(priority*10)/10, valuable: t.valuable, urgency: t.urgency, mode: t.mode });
-  state.newTask = { title: "", category: state.categories[0] || "General", timeline: "This Quarter", valuable: 3, urgency: 3, mode: "body" };
-  state.showAdd = false;
-  showSave("Saving...", true);
-  // Sync in background
-  const result = await apiPost({ action: "addTask", task: t });
-  if (result.error) { showSave("Error: " + result.error, false); }
-  else { showSave("Saved ✓", true); }
+  state.tasks.push({ id:tempId, title:t.title, category:t.category, timeline:t.timeline, priority:Math.round(priority*10)/10, valuable:t.valuable, urgency:t.urgency, mode:t.mode });
+  state.newTask = { title:"", category:state.categories[0]||"General", timeline:"This Quarter", valuable:3, urgency:3, mode:"mind" };
+  state.showAdd = false; showSave("Saving...", true);
+  const result = await apiPost({ action:"addTask", task:t });
+  if (result.error) showSave("Error: "+result.error, false); else showSave("Saved ✓", true);
   bgSync();
 }
 
 async function completeTask(id) {
-  // Optimistic: move to done immediately
-  const task = state.tasks.find(t => t.id === id);
-  if (task) {
-    state.tasks = state.tasks.filter(t => t.id !== id);
-    state.doneTasks.unshift({ ...task, completedAt: new Date().toISOString() });
-  }
-  state.expandedId = null;
-  state.editingId = null;
-  showSave("Done ✓", true);
-  // Sync in background
-  const result = await apiPost({ action: "completeTask", id });
-  if (result.error) { showSave("Error — reload", false); }
-  bgSync();
+  const task = state.tasks.find(t=>t.id===id);
+  if (task) { state.tasks = state.tasks.filter(t=>t.id!==id); state.doneTasks.unshift({...task, completedAt:new Date().toISOString()}); }
+  state.expandedId=null; state.editingId=null; showSave("Done ✓", true);
+  await apiPost({ action:"completeTask", id }); bgSync();
 }
 
 async function deleteTask(id) {
-  // Optimistic: remove immediately
-  state.tasks = state.tasks.filter(t => t.id !== id);
-  state.expandedId = null;
-  state.editingId = null;
-  showSave("Deleted", true);
-  const result = await apiPost({ action: "deleteTask", id });
-  if (result.error) { showSave("Error — reload", false); }
-  bgSync();
+  state.tasks = state.tasks.filter(t=>t.id!==id); state.expandedId=null; state.editingId=null; showSave("Deleted", true);
+  await apiPost({ action:"deleteTask", id }); bgSync();
 }
 
 async function saveEdit() {
   if (!state.editData) return;
-  // Optimistic: update in list immediately
-  const ed = state.editData;
-  const priority = ((ed.valuable + ed.urgency) / 2);
-  ed.priority = Math.round(priority * 10) / 10;
-  state.tasks = state.tasks.map(t => t.id === ed.id ? { ...ed } : t);
-  state.editingId = null;
-  state.editData = null;
-  showSave("Saving...", true);
-  const result = await apiPost({ action: "updateTask", task: ed });
-  if (result.error) { showSave("Error", false); }
-  else { showSave("Saved ✓", true); }
-  bgSync();
+  const ed = state.editData; ed.priority = Math.round(((ed.valuable+ed.urgency)/2)*10)/10;
+  state.tasks = state.tasks.map(t=>t.id===ed.id?{...ed}:t); state.editingId=null; state.editData=null; showSave("Saving...", true);
+  const result = await apiPost({ action:"updateTask", task:ed });
+  if (result.error) showSave("Error", false); else showSave("Saved ✓", true); bgSync();
 }
 
 async function reinstateTask(id) {
-  // Optimistic: move back immediately
-  const task = state.doneTasks.find(t => t.id === id);
-  if (task) {
-    state.doneTasks = state.doneTasks.filter(t => t.id !== id);
-    state.tasks.push({ ...task, completedAt: undefined });
-  }
-  state.expandedDoneId = null;
-  showSave("Reinstated ✓", true);
-  const result = await apiPost({ action: "reinstateTask", id });
-  if (result.error) { showSave("Error — reload", false); }
-  bgSync();
+  const task = state.doneTasks.find(t=>t.id===id);
+  if (task) { state.doneTasks = state.doneTasks.filter(t=>t.id!==id); state.tasks.push({...task, completedAt:undefined}); }
+  state.expandedDoneId=null; showSave("Reinstated ✓", true);
+  await apiPost({ action:"reinstateTask", id }); bgSync();
 }
 
 async function deleteDone(id) {
-  // Optimistic
-  state.doneTasks = state.doneTasks.filter(t => t.id !== id);
-  state.expandedDoneId = null;
-  showSave("Deleted", true);
-  const result = await apiPost({ action: "deleteDone", id });
-  if (result.error) { showSave("Error", false); }
-  bgSync();
+  state.doneTasks = state.doneTasks.filter(t=>t.id!==id); state.expandedDoneId=null; showSave("Deleted", true);
+  await apiPost({ action:"deleteDone", id }); bgSync();
 }
 
 async function clearDone() {
-  // Optimistic
-  state.doneTasks = [];
-  state.expandedDoneId = null;
-  showSave("Cleared ✓", true);
-  const result = await apiPost({ action: "clearDone" });
-  if (result.error) { showSave("Error", false); return; }
-  showSave("Cleared ✓", true);
-  state.expandedDoneId = null;
-  await loadAll();
+  state.doneTasks=[]; state.expandedDoneId=null; showSave("Cleared ✓", true);
+  await apiPost({ action:"clearDone" }); bgSync();
 }
 
 async function addCategory() {
-  const name = state.newCatName.trim();
-  if (!name || state.categories.includes(name)) return;
+  const name = state.newCatName.trim(); if (!name || state.categories.includes(name)) return;
   const nc = [...state.categories, name];
-  const result = await apiPost({ action: "updateCategories", categories: nc.join(",") });
-  if (result.error) { showSave("Error", false); return; }
-  state.categories = nc;
-  state.newCatName = "";
-  showSave("Added ✓", true);
-  render();
+  await apiPost({ action:"updateCategories", categories:nc.join(",") });
+  state.categories = nc; state.newCatName = ""; showSave("Added ✓", true); render();
 }
 
 async function removeCategory(cat) {
-  const inUse = state.tasks.some(t => t.category === cat) || state.doneTasks.some(t => t.category === cat);
-  if (inUse) { alert('"' + cat + '" is still used by tasks. Reassign them first.'); return; }
-  const nc = state.categories.filter(c => c !== cat);
-  const result = await apiPost({ action: "updateCategories", categories: nc.join(",") });
-  if (result.error) { showSave("Error", false); return; }
-  state.categories = nc;
-  if (state.filterCat === cat) state.filterCat = "all";
-  showSave("Removed ✓", true);
-  render();
+  const inUse = state.tasks.some(t=>t.category===cat) || state.doneTasks.some(t=>t.category===cat);
+  if (inUse) { alert('"'+cat+'" is still used by tasks.'); return; }
+  const nc = state.categories.filter(c=>c!==cat);
+  await apiPost({ action:"updateCategories", categories:nc.join(",") });
+  state.categories = nc; if (state.filterCat===cat) state.filterCat="all"; showSave("Removed ✓", true); render();
 }
 
-function startRenameCategory(cat) {
-  state.renamingCat = cat;
-  state.renameCatValue = cat;
-  render();
-  setTimeout(() => { const el = document.getElementById("renameCatInput"); if (el) { el.focus(); el.select(); } }, 50);
-}
+function startRenameCategory(cat) { state.renamingCat=cat; state.renameCatValue=cat; render(); setTimeout(()=>{const el=document.getElementById("renameCatInput");if(el){el.focus();el.select();}},50); }
 
 async function saveRenameCategory() {
-  const oldName = state.renamingCat;
-  const newName = (state.renameCatValue || "").trim();
-  if (!newName || newName === oldName) { state.renamingCat = null; state.renameCatValue = ""; render(); return; }
-  if (state.categories.includes(newName)) { alert('"' + newName + '" already exists.'); return; }
-
-  // Update category list
-  const nc = state.categories.map(c => c === oldName ? newName : c);
-
-  // Update all tasks that use this category (optimistic)
-  state.tasks.forEach(t => { if (t.category === oldName) t.category = newName; });
-  state.doneTasks.forEach(t => { if (t.category === oldName) t.category = newName; });
-  state.categories = nc;
-  if (state.filterCat === oldName) state.filterCat = newName;
-  state.renamingCat = null;
-  state.renameCatValue = "";
-  showSave("Renaming...", true);
-  render();
-
-  // Save categories
-  await apiPost({ action: "updateCategories", categories: nc.join(",") });
-
-  // Update each task in the sheet
-  for (const t of state.tasks.filter(t => t.category === newName)) {
-    await apiPost({ action: "updateTask", task: t });
-  }
-  for (const t of state.doneTasks.filter(t => t.category === newName)) {
-    await apiPost({ action: "updateTask", task: t });
-  }
-
-  showSave("Renamed ✓", true);
-  bgSync();
+  const oldName=state.renamingCat, newName=(state.renameCatValue||"").trim();
+  if (!newName||newName===oldName) { state.renamingCat=null; render(); return; }
+  if (state.categories.includes(newName)) { alert('"'+newName+'" already exists.'); return; }
+  const nc = state.categories.map(c=>c===oldName?newName:c);
+  state.tasks.forEach(t=>{if(t.category===oldName)t.category=newName;});
+  state.doneTasks.forEach(t=>{if(t.category===oldName)t.category=newName;});
+  state.categories=nc; if(state.filterCat===oldName)state.filterCat=newName;
+  state.renamingCat=null; state.renameCatValue=""; showSave("Renaming...", true); render();
+  await apiPost({ action:"updateCategories", categories:nc.join(",") });
+  for (const t of state.tasks.filter(t=>t.category===newName)) { await apiPost({ action:"updateTask", task:t }); }
+  showSave("Renamed ✓", true); bgSync();
 }
 
-// ============================================================
-// HELPERS
-// ============================================================
-function esc(s) { const d = document.createElement("div"); d.textContent = s; return d.innerHTML; }
+// === NOTES OPS ===
+function saveNotesDebounced() {
+  if (state.notesSaveTimer) clearTimeout(state.notesSaveTimer);
+  state.notesSaveTimer = setTimeout(async () => {
+    await apiPost({ action:"saveNotes", notes:state.notes });
+    showSave("Notes saved ✓", true);
+  }, 1500);
+}
+
+function addNote() {
+  const id = "note_"+Date.now();
+  state.notes.push({ id, title:"Untitled", content:"", children:[] });
+  state.activeNoteId=id; state.activeSubId=null; render(); saveNotesDebounced();
+  setTimeout(()=>{const el=document.getElementById("noteTitleInput");if(el){el.focus();el.select();}},50);
+}
+
+function addSubNote(parentId) {
+  const parent = state.notes.find(n=>n.id===parentId);
+  if (!parent) return;
+  if (!parent.children) parent.children = [];
+  const id = "sub_"+Date.now();
+  parent.children.push({ id, title:"Untitled", content:"" });
+  state.activeNoteId=parentId; state.activeSubId=id; render(); saveNotesDebounced();
+}
+
+function deleteNote(id) {
+  state.notes = state.notes.filter(n=>n.id!==id);
+  if (state.activeNoteId===id) { state.activeNoteId=null; state.activeSubId=null; }
+  render(); saveNotesDebounced();
+}
+
+function deleteSubNote(parentId, subId) {
+  const parent = state.notes.find(n=>n.id===parentId);
+  if (parent && parent.children) parent.children = parent.children.filter(s=>s.id!==subId);
+  if (state.activeSubId===subId) state.activeSubId=null;
+  render(); saveNotesDebounced();
+}
+
+function moveNote(id, dir) {
+  const idx = state.notes.findIndex(n=>n.id===id);
+  if (idx<0) return;
+  const newIdx = idx+dir;
+  if (newIdx<0||newIdx>=state.notes.length) return;
+  [state.notes[idx], state.notes[newIdx]] = [state.notes[newIdx], state.notes[idx]];
+  render(); saveNotesDebounced();
+}
+
+function moveSubNote(parentId, subId, dir) {
+  const parent = state.notes.find(n=>n.id===parentId);
+  if (!parent||!parent.children) return;
+  const idx = parent.children.findIndex(s=>s.id===subId);
+  const newIdx = idx+dir;
+  if (newIdx<0||newIdx>=parent.children.length) return;
+  [parent.children[idx], parent.children[newIdx]] = [parent.children[newIdx], parent.children[idx]];
+  render(); saveNotesDebounced();
+}
+
+function getActiveNote() {
+  if (!state.activeNoteId) return null;
+  const note = state.notes.find(n=>n.id===state.activeNoteId);
+  if (!note) return null;
+  if (state.activeSubId && note.children) {
+    const sub = note.children.find(s=>s.id===state.activeSubId);
+    if (sub) return { ...sub, _parentId:note.id, _isSub:true };
+  }
+  return note;
+}
+
+// === HELPERS ===
+function esc(s) { const d=document.createElement("div"); d.textContent=s; return d.innerHTML; }
 
 function getFiltered() {
-  return state.tasks
-    .filter(t => {
-      if (state.mode !== "all" && t.mode !== state.mode) return false;
-      if (state.filterCat !== "all" && t.category !== state.filterCat) return false;
-      return true;
-    })
-    .sort((a, b) => {
-      const tOrder = TIMELINES.indexOf(a.timeline) - TIMELINES.indexOf(b.timeline);
-      if (tOrder !== 0) return tOrder;
-      return (b.priority || 0) - (a.priority || 0);
-    });
+  return state.tasks.filter(t=>{
+    if (state.mode!=="all"&&t.mode!==state.mode) return false;
+    if (state.filterCat!=="all"&&t.category!==state.filterCat) return false;
+    return true;
+  }).sort((a,b)=>{
+    const tOrder=TIMELINES.indexOf(a.timeline)-TIMELINES.indexOf(b.timeline);
+    if(tOrder!==0) return tOrder;
+    return (b.priority||0)-(a.priority||0);
+  });
 }
 
 function groupByTimeline(tasks) {
-  const g = {};
-  TIMELINES.forEach(tl => {
-    const items = tasks.filter(t => t.timeline === tl);
-    if (items.length > 0) g[tl] = items;
-  });
+  const g={};
+  TIMELINES.forEach(tl=>{ const items=tasks.filter(t=>t.timeline===tl); if(items.length>0)g[tl]=items; });
   return g;
 }
 
 function closeAllPanels(except) {
-  if (except !== "add") state.showAdd = false;
-  if (except !== "done") state.showDone = false;
-  if (except !== "editCats") state.showEditCats = false;
+  if(except!=="add")state.showAdd=false;
+  if(except!=="done")state.showDone=false;
+  if(except!=="editCats")state.showEditCats=false;
 }
 
-// ============================================================
-// RENDER
-// ============================================================
+// === RENDER ===
 function render() {
-  const app = document.getElementById("app");
-  if (!state.loaded) { app.innerHTML = '<div class="loading">Loading Cache...</div>'; return; }
+  // Nav tabs
+  document.getElementById("navTabs").innerHTML =
+    `<button class="nav-tab ${state.view==="tasks"?"active":""}" onclick="state.view='tasks';updateHash();render()">Tasks</button>` +
+    `<button class="nav-tab ${state.view==="notes"?"active":""}" onclick="state.view='notes';updateHash();render()">Notes</button>`;
 
+  const app = document.getElementById("app");
+  if (!state.loaded) { app.innerHTML='<div class="loading">Loading Cache...</div>'; return; }
+
+  if (state.view === "notes") { renderNotes(app); return; }
+  renderTasks(app);
+}
+
+function renderTasks(app) {
   const filtered = getFiltered();
   const grouped = groupByTimeline(filtered);
   const m = MODES[state.mode];
-
   let html = '';
 
-  // Error
   if (state.error) html += `<div class="error-banner">${esc(state.error)}</div>`;
 
   // Header
   html += `<div class="header"><div class="header-top"><h1 class="title">THE CACHE</h1><div class="header-right">`;
-  if (state.saveStatus) html += `<div class="save-status ${state.saveStatus.includes("✓") ? "save-ok" : "save-err"}">${esc(state.saveStatus)}</div>`;
-  html += `<div class="count">${filtered.length} tasks</div></div></div>`;
-  html += `<div class="subtitle">${esc(m.desc)}</div></div>`;
+  if (state.saveStatus) html += `<div class="save-status ${state.saveStatus.includes("✓")?"save-ok":"save-err"}">${esc(state.saveStatus)}</div>`;
+  html += `<div class="count">${filtered.length} tasks</div></div></div><div class="subtitle">${esc(m.desc)}</div></div>`;
 
   // Mode bar
   html += '<div class="mode-bar">';
   Object.entries(MODES).forEach(([key, mo]) => {
-    const active = state.mode === key;
+    const active = state.mode===key;
     const style = active ? `background:${mo.color}22;border-color:${mo.color};color:${mo.color}` : "";
-    html += `<button class="mode-btn ${active?"active":""}" style="${style}" onclick="state.mode='${key}';render()"><span class="mode-icon">${mo.icon}</span>${mo.label}</button>`;
+    html += `<button class="mode-btn" style="${style}" onclick="state.mode='${key}';render()"><span class="mode-icon">${mo.icon}</span>${mo.label}</button>`;
   });
   html += '</div>';
 
@@ -532,8 +450,7 @@ function render() {
   html += '<div class="cat-bar">';
   html += `<button class="cat-btn ${state.filterCat==="all"?"active":""}" onclick="state.filterCat='all';render()">All</button>`;
   state.categories.forEach(c => {
-    const label = c.replace("JPPF ", "");
-    html += `<button class="cat-btn ${state.filterCat===c?"active":""}" onclick="state.filterCat='${esc(c)}';render()">${esc(label)}</button>`;
+    html += `<button class="cat-btn ${state.filterCat===c?"active":""}" onclick="state.filterCat='${esc(c)}';render()">${esc(c.replace("JPPF ",""))}</button>`;
   });
   html += '</div>';
 
@@ -544,30 +461,23 @@ function render() {
   html += `<button class="btn-cat" onclick="closeAllPanels('editCats');state.showEditCats=!state.showEditCats;render()">${state.showEditCats?"✕ Close":"Edit Categories"}</button>`;
   html += '</div>';
 
-  // Edit Categories panel
+  // Edit Categories
   if (state.showEditCats) {
-    html += '<div class="edit-cats">';
-    html += '<div class="edit-cats-title">Categories</div>';
-    html += '<div class="edit-cats-list">';
+    html += '<div class="edit-cats"><div class="edit-cats-title">Categories</div><div class="edit-cats-list">';
     state.categories.forEach(c => {
-      const count = state.tasks.filter(t => t.category === c).length;
-      const inUse = count > 0 || state.doneTasks.some(t => t.category === c);
+      const count = state.tasks.filter(t=>t.category===c).length;
+      const inUse = count>0||state.doneTasks.some(t=>t.category===c);
       html += '<div class="edit-cat-item">';
-      if (state.renamingCat === c) {
-        // Rename mode
+      if (state.renamingCat===c) {
         html += `<div class="edit-cat-rename"><input class="input" id="renameCatInput" value="${esc(state.renameCatValue)}" oninput="state.renameCatValue=this.value" onkeydown="if(event.key==='Enter')saveRenameCategory();if(event.key==='Escape'){state.renamingCat=null;render()}"><button class="btn-rename-save" onclick="saveRenameCategory()">Save</button><button class="btn-rename-cancel" onclick="state.renamingCat=null;render()">✕</button></div>`;
       } else {
-        // View mode
         html += `<div><span class="edit-cat-name" onclick="startRenameCategory('${esc(c)}')" title="Click to rename">${esc(c)}</span><span class="edit-cat-count">${count} task${count!==1?"s":""}</span></div>`;
-        html += `<button class="btn-remove-cat ${inUse?"disabled":""}" onclick="${inUse?"":"removeCategory('"+esc(c)+"')"}" title="${inUse?"In use — reassign tasks first":"Remove category"}">✕</button>`;
+        html += `<button class="btn-remove-cat ${inUse?"disabled":""}" onclick="${inUse?"":"removeCategory('"+esc(c)+"')"}" title="${inUse?"In use":"Remove"}">✕</button>`;
       }
       html += '</div>';
     });
-    html += '</div>';
-    html += '<div class="edit-cats-divider"></div>';
-    html += '<div class="edit-cats-add-label">Add new category</div>';
-    html += `<div class="add-cat-row"><input class="input" id="newCatInput" placeholder="Category name" value="${esc(state.newCatName)}" oninput="state.newCatName=this.value" onkeydown="if(event.key==='Enter')addCategory()"><button class="btn-cat-save" onclick="addCategory()">Add</button></div>`;
-    html += '</div>';
+    html += '</div><div class="edit-cats-divider"></div><div class="edit-cats-add-label">Add new category</div>';
+    html += `<div class="add-cat-row"><input class="input" id="newCatInput" placeholder="Category name" value="${esc(state.newCatName)}" oninput="state.newCatName=this.value" onkeydown="if(event.key==='Enter')addCategory()"><button class="btn-cat-save" onclick="addCategory()">Add</button></div></div>`;
   }
 
   // Add task form
@@ -577,24 +487,22 @@ function render() {
     html += '<div class="form-row">';
     html += `<select class="select" onchange="state.newTask.category=this.value">${state.categories.map(c=>`<option value="${esc(c)}" ${state.newTask.category===c?"selected":""}>${esc(c)}</option>`).join("")}</select>`;
     html += `<select class="select" onchange="state.newTask.timeline=this.value">${TIMELINES.map(t=>`<option value="${t}" ${state.newTask.timeline===t?"selected":""}>${t}</option>`).join("")}</select>`;
-    html += `<select class="select" onchange="state.newTask.mode=this.value"><option value="body" ${state.newTask.mode==="body"?"selected":""}>⚡ Body</option><option value="focus" ${state.newTask.mode==="focus"?"selected":""}>✦ Focus</option><option value="work" ${state.newTask.mode==="work"?"selected":""}>◆ Work</option></select>`;
+    html += `<select class="select" onchange="state.newTask.mode=this.value"><option value="mind" ${state.newTask.mode==="mind"?"selected":""}>✦ Mind</option><option value="film" ${state.newTask.mode==="film"?"selected":""}>◈ Film</option><option value="jppf" ${state.newTask.mode==="jppf"?"selected":""}>◆ JPPF</option></select>`;
     html += '</div><div class="form-row-sliders">';
-    html += `<label class="slider-label">Value: ${state.newTask.valuable}<input type="range" class="slider" min="0" max="10" value="${state.newTask.valuable}" oninput="state.newTask.valuable=+this.value;this.nextElementSibling||0;render()" step="1"></label>`;
+    html += `<label class="slider-label">Value: ${state.newTask.valuable}<input type="range" class="slider" min="0" max="10" value="${state.newTask.valuable}" oninput="state.newTask.valuable=+this.value;render()" step="1"></label>`;
     html += `<label class="slider-label">Urgency: ${state.newTask.urgency}<input type="range" class="slider" min="0" max="10" value="${state.newTask.urgency}" oninput="state.newTask.urgency=+this.value;render()" step="1"></label>`;
-    html += '</div>';
-    html += '<button class="btn-submit" onclick="addTask()">Add to Cache</button>';
-    html += '</div>';
+    html += '</div><button class="btn-submit" onclick="addTask()">Add to Cache</button></div>';
   }
 
   // Done list
   if (state.showDone) {
     html += '<div class="done-section"><div class="done-header"><span class="done-label">Completed</span>';
-    if (state.doneTasks.length > 0) html += '<button class="btn-clear" onclick="clearDone()">Clear all</button>';
+    if (state.doneTasks.length>0) html += '<button class="btn-clear" onclick="clearDone()">Clear all</button>';
     html += '</div>';
-    if (state.doneTasks.length === 0) html += '<div style="color:#4a4640;font-size:13px;padding:8px 0">No completed tasks yet.</div>';
+    if (state.doneTasks.length===0) html += '<div style="color:#4a4640;font-size:13px;padding:8px 0">No completed tasks yet.</div>';
     state.doneTasks.forEach(t => {
       html += `<div class="done-row" onclick="state.expandedDoneId=state.expandedDoneId==='${t.id}'?null:'${t.id}';render()"><span class="done-check">✓</span><span class="done-title">${esc(t.title)}</span></div>`;
-      if (state.expandedDoneId === t.id) {
+      if (state.expandedDoneId===t.id) {
         html += `<div class="done-expanded"><div class="done-meta">${esc(t.category)} · ${esc(t.timeline)} · P ${t.priority}</div><div class="done-actions"><button class="btn-reinstate" onclick="event.stopPropagation();reinstateTask('${t.id}')">↩ Reinstate</button><button class="btn-delete" onclick="event.stopPropagation();deleteDone('${t.id}')">Delete forever</button></div></div>`;
       }
     });
@@ -603,64 +511,200 @@ function render() {
 
   // Task list
   Object.entries(grouped).forEach(([timeline, items]) => {
-    const color = TIMELINE_COLORS[timeline] || "#7a7568";
+    const color = TIMELINE_COLORS[timeline]||"#7a7568";
     html += '<div class="group">';
     html += `<div class="group-header"><div class="group-dot" style="background:${color}"></div><span class="group-label" style="color:${color}">${timeline}</span><div class="group-line"></div></div>`;
     items.forEach(task => {
-      const modeInfo = MODES[task.mode] || MODES.body;
+      const mi = MODES[task.mode]||MODES.mind;
       html += '<div class="task-row">';
-      html += `<button class="btn-check" onclick="event.stopPropagation();completeTask('${task.id}')" title="Complete">○</button>`;
+      html += `<button class="btn-check" onclick="event.stopPropagation();completeTask('${task.id}')">○</button>`;
       html += `<div class="task-content" onclick="if(state.editingId==='${task.id}')return;state.expandedId=state.expandedId==='${task.id}'?null:'${task.id}';render()">`;
       html += `<div class="task-title">${esc(task.title)}</div>`;
-      html += `<div class="task-meta"><span>${esc(task.category)}</span><span class="task-score">P ${task.priority}</span><span style="color:${modeInfo.color}">${modeInfo.icon} ${task.mode}</span></div>`;
+      html += `<div class="task-meta"><span>${esc(task.category)}</span><span class="task-score">P ${task.priority}</span><span style="color:${mi.color}">${mi.icon} ${task.mode}</span></div>`;
 
-      // Expanded view
-      if (state.expandedId === task.id && state.editingId !== task.id) {
-        html += '<div class="task-expanded">';
-        html += `<div class="score-row"><span>Value: ${task.valuable}/10</span><span>Urgency: ${task.urgency}/10</span></div>`;
-        html += `<div class="task-actions"><button class="btn-edit" onclick="event.stopPropagation();state.editingId='${task.id}';state.editData=JSON.parse(JSON.stringify(state.tasks.find(t=>t.id==='${task.id}')));render()">Edit task</button><button class="btn-delete" onclick="event.stopPropagation();deleteTask('${task.id}')">Delete</button></div>`;
-        html += '</div>';
+      if (state.expandedId===task.id && state.editingId!==task.id) {
+        html += `<div class="task-expanded"><div class="score-row"><span>Value: ${task.valuable}/10</span><span>Urgency: ${task.urgency}/10</span></div>`;
+        html += `<div class="task-actions"><button class="btn-edit" onclick="event.stopPropagation();state.editingId='${task.id}';state.editData=JSON.parse(JSON.stringify(state.tasks.find(t=>t.id==='${task.id}')));render()">Edit task</button><button class="btn-delete" onclick="event.stopPropagation();deleteTask('${task.id}')">Delete</button></div></div>`;
       }
 
-      // Edit mode
-      if (state.editingId === task.id && state.editData) {
+      if (state.editingId===task.id && state.editData) {
         const ed = state.editData;
         html += '<div class="task-expanded" onclick="event.stopPropagation()">';
         html += `<input class="input" value="${esc(ed.title)}" oninput="state.editData.title=this.value">`;
         html += '<div class="form-row">';
         html += `<select class="select" onchange="state.editData.category=this.value">${state.categories.map(c=>`<option value="${esc(c)}" ${ed.category===c?"selected":""}>${esc(c)}</option>`).join("")}</select>`;
         html += `<select class="select" onchange="state.editData.timeline=this.value">${TIMELINES.map(t=>`<option value="${t}" ${ed.timeline===t?"selected":""}>${t}</option>`).join("")}</select>`;
-        html += `<select class="select" onchange="state.editData.mode=this.value"><option value="body" ${ed.mode==="body"?"selected":""}>⚡ Body</option><option value="focus" ${ed.mode==="focus"?"selected":""}>✦ Focus</option><option value="work" ${ed.mode==="work"?"selected":""}>◆ Work</option></select>`;
+        html += `<select class="select" onchange="state.editData.mode=this.value"><option value="mind" ${ed.mode==="mind"?"selected":""}>✦ Mind</option><option value="film" ${ed.mode==="film"?"selected":""}>◈ Film</option><option value="jppf" ${ed.mode==="jppf"?"selected":""}>◆ JPPF</option></select>`;
         html += '</div><div class="form-row-sliders">';
         html += `<label class="slider-label">Value: ${ed.valuable}<input type="range" class="slider" min="0" max="10" value="${ed.valuable}" oninput="state.editData.valuable=+this.value;render()" step="1"></label>`;
         html += `<label class="slider-label">Urgency: ${ed.urgency}<input type="range" class="slider" min="0" max="10" value="${ed.urgency}" oninput="state.editData.urgency=+this.value;render()" step="1"></label>`;
-        html += '</div>';
-        html += `<div class="task-actions"><button class="btn-save-edit" onclick="event.stopPropagation();saveEdit()">Save</button><button class="btn-cancel-edit" onclick="event.stopPropagation();state.editingId=null;state.editData=null;render()">Cancel</button><button class="btn-delete" style="margin-left:auto" onclick="event.stopPropagation();deleteTask('${task.id}')">Delete</button></div>`;
-        html += '</div>';
+        html += '</div><div class="task-actions">';
+        html += `<button class="btn-save-edit" onclick="event.stopPropagation();saveEdit()">Save</button>`;
+        html += `<button class="btn-cancel-edit" onclick="event.stopPropagation();state.editingId=null;state.editData=null;render()">Cancel</button>`;
+        html += `<button class="btn-delete" style="margin-left:auto" onclick="event.stopPropagation();deleteTask('${task.id}')">Delete</button></div></div>`;
       }
-
       html += '</div></div>';
     });
     html += '</div>';
   });
 
-  if (Object.keys(grouped).length === 0) {
-    html += '<div class="empty">No tasks match this filter.</div>';
-  }
-
-  html += '<div class="footer">Synced with Google Sheets · Body / Focus / Work</div>';
-
+  if (Object.keys(grouped).length===0) html += '<div class="empty">No tasks match this filter.</div>';
+  html += '<div class="footer">Synced with Google Sheets · Mind / Film / JPPF</div>';
   app.innerHTML = html;
 
-  // Auto-focus inputs
-  if (state.showAdd) { const el = document.getElementById("addTaskInput"); if (el) el.focus(); }
-  if (state.showEditCats) { const el = document.getElementById("newCatInput"); if (el) el.focus(); }
+  if (state.showAdd) { const el=document.getElementById("addTaskInput"); if(el)el.focus(); }
+  if (state.showEditCats) { const el=document.getElementById("newCatInput"); if(el&&!state.renamingCat)el.focus(); }
 }
 
-// ============================================================
-// INIT
-// ============================================================
-loadAll();
+function renderNotes(app) {
+  let html = '<div class="notes-container">';
+
+  // Sidebar
+  html += '<div class="notes-sidebar">';
+  html += '<div class="ns-header"><span class="ns-title">Notes</span><button class="ns-add" onclick="addNote()" title="New note">+</button></div>';
+
+  state.notes.forEach((note, i) => {
+    const isActive = state.activeNoteId===note.id && !state.activeSubId;
+    const isParentActive = state.activeNoteId===note.id;
+    const hasChildren = note.children && note.children.length>0;
+
+    html += `<div class="ns-item ${isActive?"active":""}" onclick="navigateToNote('${note.id}',null)">`;
+    if (hasChildren) html += `<span class="ns-item-arrow ${isParentActive?"open":""}" onclick="event.stopPropagation();state.activeNoteId=state.activeNoteId==='${note.id}'?null:'${note.id}';state.activeSubId=null;updateHash();render()">▶</span>`;
+    html += `<span class="ns-item-label">${esc(note.title)}</span>`;
+    html += '<div class="ns-item-actions">';
+    html += `<button class="ns-link-btn" onclick="event.stopPropagation();copyNoteLink('${note.id}',null,this)" title="Copy link">🔗</button>`;
+    html += `<div class="ns-move-btns"><button class="ns-move-btn" onclick="event.stopPropagation();moveNote('${note.id}',-1)" title="Move up">▲</button><button class="ns-move-btn" onclick="event.stopPropagation();moveNote('${note.id}',1)" title="Move down">▼</button></div>`;
+    html += `<button class="ns-act-btn" onclick="event.stopPropagation();deleteNote('${note.id}')" title="Delete">✕</button>`;
+    html += '</div></div>';
+
+    // Sub-notes
+    if (isParentActive && hasChildren) {
+      html += '<div class="ns-sub">';
+      note.children.forEach((sub, si) => {
+        const isSubActive = state.activeSubId===sub.id;
+        html += `<div class="ns-item ${isSubActive?"active":""}" onclick="event.stopPropagation();navigateToNote('${note.id}','${sub.id}')">`;
+        html += `<span class="ns-item-label">${esc(sub.title)}</span>`;
+        html += '<div class="ns-item-actions">';
+        html += `<button class="ns-link-btn" onclick="event.stopPropagation();copyNoteLink('${note.id}','${sub.id}',this)" title="Copy link">🔗</button>`;
+        html += `<div class="ns-move-btns"><button class="ns-move-btn" onclick="event.stopPropagation();moveSubNote('${note.id}','${sub.id}',-1)">▲</button><button class="ns-move-btn" onclick="event.stopPropagation();moveSubNote('${note.id}','${sub.id}',1)">▼</button></div>`;
+        html += `<button class="ns-act-btn" onclick="event.stopPropagation();deleteSubNote('${note.id}','${sub.id}')">✕</button>`;
+        html += '</div></div>';
+      });
+      html += '</div>';
+    }
+  });
+  html += '</div>';
+
+  // Main editor
+  html += '<div class="notes-main">';
+  const activeNote = getActiveNote();
+  if (activeNote) {
+    const isSub = activeNote._isSub;
+    const parentId = activeNote._parentId;
+
+    if (!isSub) {
+      html += '<div class="note-sub-header">';
+      html += `<button class="note-sub-add" onclick="addSubNote('${activeNote.id}')">+ Sub-note</button>`;
+      html += '</div>';
+    }
+
+    html += `<input class="note-title-input" id="noteTitleInput" value="${esc(activeNote.title)}" oninput="updateNoteField('title',this.value)" placeholder="Note title">`;
+    html += `<textarea class="note-textarea" oninput="updateNoteField('content',this.value)" placeholder="Start writing...">${esc(activeNote.content||"")}</textarea>`;
+  } else {
+    html += '<div class="note-empty">Select a note or click + to create one</div>';
+  }
+  html += '</div></div>';
+
+  if (state.saveStatus) {
+    html += `<div style="position:fixed;top:50px;right:16px;font-size:11px;font-family:var(--mono);" class="${state.saveStatus.includes("✓")?"save-ok":"save-err"}">${esc(state.saveStatus)}</div>`;
+  }
+
+  app.innerHTML = html;
+}
+
+function updateNoteField(field, value) {
+  if (state.activeSubId) {
+    const parent = state.notes.find(n=>n.id===state.activeNoteId);
+    if (parent && parent.children) {
+      const sub = parent.children.find(s=>s.id===state.activeSubId);
+      if (sub) sub[field] = value;
+    }
+  } else if (state.activeNoteId) {
+    const note = state.notes.find(n=>n.id===state.activeNoteId);
+    if (note) note[field] = value;
+  }
+  // Update sidebar label if title changed
+  if (field === "title") {
+    const sidebarItems = document.querySelectorAll(".ns-item-label");
+    // Just re-render sidebar portion would be heavy, so debounce a full render
+  }
+  saveNotesDebounced();
+}
+
+// === URL HASH ROUTING ===
+function updateHash() {
+  if (state.view === "notes" && state.activeNoteId) {
+    if (state.activeSubId) {
+      window.location.hash = "note/" + state.activeNoteId + "/" + state.activeSubId;
+    } else {
+      window.location.hash = "note/" + state.activeNoteId;
+    }
+  } else if (state.view === "tasks") {
+    window.location.hash = "tasks";
+  } else {
+    window.location.hash = "";
+  }
+}
+
+function readHash() {
+  const hash = window.location.hash.replace("#", "");
+  if (!hash) return;
+
+  const parts = hash.split("/");
+
+  if (parts[0] === "tasks") {
+    state.view = "tasks";
+  } else if (parts[0] === "note" && parts[1]) {
+    state.view = "notes";
+    state.activeNoteId = parts[1];
+    if (parts[2]) {
+      state.activeSubId = parts[2];
+    } else {
+      state.activeSubId = null;
+    }
+  }
+}
+
+function navigateToNote(noteId, subId) {
+  state.activeNoteId = noteId;
+  state.activeSubId = subId;
+  state.view = "notes";
+  updateHash();
+  render();
+}
+
+function copyNoteLink(noteId, subId, btnEl) {
+  let url = window.location.origin + window.location.pathname + "#note/" + noteId;
+  if (subId && subId !== "null") url += "/" + subId;
+  navigator.clipboard.writeText(url).then(() => {
+    if (btnEl) { btnEl.textContent = "✓"; btnEl.classList.add("ns-link-copied"); setTimeout(() => { btnEl.textContent = "🔗"; btnEl.classList.remove("ns-link-copied"); }, 1500); }
+  }).catch(() => {
+    // Fallback for older browsers
+    const ta = document.createElement("textarea"); ta.value = url; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); document.body.removeChild(ta);
+    if (btnEl) { btnEl.textContent = "✓"; setTimeout(() => { btnEl.textContent = "🔗"; }, 1500); }
+  });
+}
+
+// Listen for hash changes (back/forward browser buttons)
+window.addEventListener("hashchange", () => { readHash(); render(); });
+
+// === INIT ===
+async function init() {
+  await loadAll();
+  readHash();
+  render();
+}
+init();
 </script>
 </body>
 </html>
