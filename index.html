@@ -322,10 +322,7 @@ function saveNotesDebounced() {
   if (state.notesSaveTimer) clearTimeout(state.notesSaveTimer);
   state.notesSaveTimer = setTimeout(async () => {
     await apiPost({ action:"saveNotes", notes:state.notes });
-    // Show save indicator without re-rendering (which would destroy active textarea)
-    const indicator = document.getElementById("notesSaveIndicator");
-    if (indicator) { indicator.textContent = "Saved ✓"; indicator.className = "save-ok"; setTimeout(() => { indicator.textContent = ""; }, 1200); }
-  }, 1500);
+  }, 5000);
 }
 
 function addNote() {
@@ -614,7 +611,6 @@ function renderNotes(app) {
 
     html += `<input class="note-title-input" id="noteTitleInput" value="${esc(activeNote.title)}" oninput="updateNoteField('title',this.value)" placeholder="Note title">`;
     html += `<textarea class="note-textarea" oninput="updateNoteField('content',this.value)" placeholder="Start writing...">${esc(activeNote.content||"")}</textarea>`;
-    html += `<div id="notesSaveIndicator" style="font-size:11px;font-family:var(--mono);margin-top:6px;height:16px;"></div>`;
   } else {
     html += '<div class="note-empty">Select a note or click + to create one</div>';
   }
