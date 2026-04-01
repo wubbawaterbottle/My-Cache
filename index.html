@@ -185,7 +185,7 @@ body { background: var(--bg); color: var(--text); font-family: var(--serif); min
 <div class="container" id="app"><div class="loading">Loading Cache...</div></div>
 
 <script>
-const API_URL = "https://script.google.com/macros/s/AKfycbyfh-2L6bSvtasV4rm6eLnt20UtFmhDK5ME7beg347Pvjw2DJ8Q4ax4EfbjPEyya4dYtw/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbyxoCnKari_GGBhS3rDt0X5PE__gBNkizXlmYRBRAW-lmVfNmk7cd3kkXw2gGjwrQ-xiQ/exec";
 
 const MODES = {
   all: { label: "All Tasks", icon: "◉", color: "#c4b5a0", desc: "Everything" },
@@ -206,9 +206,9 @@ let state = {
   newTask:{ title:"", category:"JPPF General", timeline:"This Quarter", valuable:3, urgency:3, mode:"mind" },
   newCatName:"", renamingCat:null, renameCatValue:"",
   saveStatus:"", loaded:false, error:null,
-  // Notes
-  notes:[], activePath:null, confirmDeletePath:null, sidebarOpen:false,
-  notesDirty:false, notesSaveTimer:null,
+  // Notes (flat array from Sheet — each note is {id, parentId, title, content, sortOrder, createdAt})
+  notesFlat:[], activePath:null, confirmDeletePath:null, sidebarOpen:false,
+  noteSaveTimers:{}, // per-note debounce timers
 };
 
 // === JSONP API ===
@@ -232,18 +232,15 @@ async function bgSync() {
   try {
     const data = await apiGet("getAll");
     if (!data.error) {
-      // Always sync tasks (they're managed through API, not edited live)
       state.tasks = data.tasks || [];
       state.doneTasks = data.done || [];
       if (data.settings && data.settings.categories) state.categories = data.settings.categories.split(",").map(s=>s.trim()).filter(Boolean);
       
-      // Only sync notes from server if we have NO unsaved local changes
-      // This prevents another device's stale load from overwriting your edits
-      const notesAreDirty = Date.now() < notesDirtyUntil;
-      if (!notesAreDirty && data.notes) {
-        state.notes = data.notes;
+      // Only sync notes if no pending per-note saves
+      const hasPendingSaves = Object.keys(state.noteSaveTimers).length > 0;
+      if (!hasPendingSaves && data.notes) {
+        state.notesFlat = data.notes;
       }
-      
       render();
     }
   } catch(e) {}
@@ -256,7 +253,7 @@ async function loadAll() {
   state.tasks = data.tasks || [];
   state.doneTasks = data.done || [];
   if (data.settings && data.settings.categories) state.categories = data.settings.categories.split(",").map(s=>s.trim()).filter(Boolean);
-  state.notes = data.notes || [];
+  state.notesFlat = data.notes || [];
   state.loaded = true; state.error = null; render();
 }
 
@@ -340,55 +337,63 @@ async function saveRenameCategory() {
   showSave("Renamed ✓", true); bgSync();
 }
 
-// === NOTES OPS (recursive infinite nesting) ===
-let notesDirtyUntil = 0; // timestamp — notes are "dirty" until this time passes
+// === NOTES OPS (flat rows — each note saved individually) ===
 
-function saveNotesDebounced() {
-  // Mark notes as dirty for 5 seconds after last edit (prevents bgSync from overwriting)
-  notesDirtyUntil = Date.now() + 5000;
-  if (state.notesSaveTimer) clearTimeout(state.notesSaveTimer);
-  state.notesSaveTimer = setTimeout(async () => {
-    await apiPost({ action:"saveNotes", notes:state.notes });
-    // After successful save, keep dirty for 2 more seconds to let it propagate
-    notesDirtyUntil = Date.now() + 2000;
+// Build tree from flat array for rendering
+function buildNoteTree(flatNotes, parentId) {
+  return flatNotes
+    .filter(n => (n.parentId || "") === (parentId || ""))
+    .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0))
+    .map(n => ({
+      ...n,
+      children: buildNoteTree(flatNotes, n.id)
+    }));
+}
+
+function getNoteTree() { return buildNoteTree(state.notesFlat, ""); }
+
+// Save a single note (debounced per-note)
+function saveNoteDebounced(noteId) {
+  if (state.noteSaveTimers[noteId]) clearTimeout(state.noteSaveTimers[noteId]);
+  state.noteSaveTimers[noteId] = setTimeout(async () => {
+    delete state.noteSaveTimers[noteId];
+    const note = state.notesFlat.find(n => n.id === noteId);
+    if (note) await apiPost({ action: "saveNote", note });
   }, 2000);
 }
 
-// Navigate the tree by path (array of IDs)
-function findNoteByPath(path) {
-  if (!path || path.length === 0) return null;
-  let list = state.notes;
-  let node = null;
-  for (let i = 0; i < path.length; i++) {
-    node = list.find(n => n.id === path[i]);
-    if (!node) return null;
-    if (i < path.length - 1) list = node.children || [];
-  }
-  return node;
+// Find note in flat list
+function findNoteFlat(id) { return state.notesFlat.find(n => n.id === id); }
+
+// Get the note pointed to by activePath
+function getActiveNote() {
+  if (!state.activePath || state.activePath.length === 0) return null;
+  const id = state.activePath[state.activePath.length - 1];
+  return findNoteFlat(id);
 }
 
-function findParentList(path) {
-  if (!path || path.length === 0) return state.notes;
-  if (path.length === 1) return state.notes;
-  const parentPath = path.slice(0, -1);
-  const parent = findNoteByPath(parentPath);
-  return parent ? (parent.children || []) : state.notes;
+// Get children of a note
+function getChildren(parentId) {
+  return state.notesFlat
+    .filter(n => (n.parentId || "") === (parentId || ""))
+    .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
 }
 
 function addNoteToList(parentPath) {
   const id = "n_" + Date.now();
-  const newNote = { id, title: "Untitled", content: "", children: [] };
-  if (!parentPath || parentPath.length === 0) {
-    state.notes.push(newNote);
-    state.activePath = [id];
-  } else {
-    const parent = findNoteByPath(parentPath);
-    if (!parent) return;
-    if (!parent.children) parent.children = [];
-    parent.children.push(newNote);
-    state.activePath = [...parentPath, id];
-  }
-  render(); saveNotesDebounced();
+  const parentId = parentPath && parentPath.length > 0 ? parentPath[parentPath.length - 1] : "";
+  const siblings = getChildren(parentId);
+  const sortOrder = siblings.length;
+  
+  state.notesFlat.push({ id, parentId, title: "Untitled", content: "", sortOrder, createdAt: new Date().toISOString() });
+  state.activePath = parentPath ? [...parentPath, id] : [id];
+  
+  // Expand parent
+  if (parentId) expandedNodes[parentId] = true;
+  
+  render();
+  // Save immediately (not debounced — it's a new note)
+  apiPost({ action: "saveNote", note: { id, parentId, title: "Untitled", content: "", sortOrder } });
   setTimeout(() => { const el = document.getElementById("noteTitleInput"); if (el) { el.focus(); el.select(); } }, 50);
 }
 
@@ -402,50 +407,61 @@ function cancelDelete() {
   render();
 }
 
-function executeDelete() {
+async function executeDelete() {
   const path = state.confirmDeletePath;
   if (!path || path.length === 0) return;
   const id = path[path.length - 1];
-  if (path.length === 1) {
-    state.notes = state.notes.filter(n => n.id !== id);
-  } else {
-    const parentPath = path.slice(0, -1);
-    const parent = findNoteByPath(parentPath);
-    if (parent && parent.children) parent.children = parent.children.filter(n => n.id !== id);
-  }
-  // Clear active if deleted
-  if (state.activePath && state.activePath.join("/").startsWith(path.join("/"))) {
+  
+  // Collect all descendant IDs
+  const toDelete = collectDescendants(id);
+  
+  // Remove from local state
+  state.notesFlat = state.notesFlat.filter(n => toDelete.indexOf(n.id) === -1);
+  
+  if (state.activePath && toDelete.indexOf(state.activePath[state.activePath.length - 1]) !== -1) {
     state.activePath = null;
   }
   state.confirmDeletePath = null;
-  render(); saveNotesDebounced();
+  render();
+  
+  // Delete from Sheet
+  await apiPost({ action: "deleteNoteRecursive", id });
+}
+
+function collectDescendants(id) {
+  const result = [id];
+  const children = state.notesFlat.filter(n => n.parentId === id);
+  children.forEach(c => {
+    result.push(...collectDescendants(c.id));
+  });
+  return result;
 }
 
 function moveNoteInList(path, dir) {
   if (!path || path.length === 0) return;
   const id = path[path.length - 1];
-  let list;
-  if (path.length === 1) { list = state.notes; }
-  else { const parent = findNoteByPath(path.slice(0, -1)); if (!parent) return; list = parent.children || []; }
-  const idx = list.findIndex(n => n.id === id);
+  const note = findNoteFlat(id);
+  if (!note) return;
+  
+  const siblings = getChildren(note.parentId || "");
+  const idx = siblings.findIndex(n => n.id === id);
   const newIdx = idx + dir;
-  if (newIdx < 0 || newIdx >= list.length) return;
-  [list[idx], list[newIdx]] = [list[newIdx], list[idx]];
-  render(); saveNotesDebounced();
-}
-
-function getActiveNote() {
-  if (!state.activePath || state.activePath.length === 0) return null;
-  return findNoteByPath(state.activePath);
-}
-
-// Expanded nodes tracker (which tree nodes are open)
-let expandedNodes = {};
-
-function toggleExpand(id) {
-  expandedNodes[id] = !expandedNodes[id];
+  if (newIdx < 0 || newIdx >= siblings.length) return;
+  
+  // Swap sort orders
+  const other = siblings[newIdx];
+  const tempSort = note.sortOrder;
+  note.sortOrder = other.sortOrder;
+  other.sortOrder = tempSort;
+  
   render();
+  // Save both reordered notes
+  apiPost({ action: "reorderNotes", updates: [{ id: note.id, sortOrder: note.sortOrder }, { id: other.id, sortOrder: other.sortOrder }] });
 }
+
+// Expanded nodes tracker
+let expandedNodes = {};
+function toggleExpand(id) { expandedNodes[id] = !expandedNodes[id]; render(); }
 
 // === HELPERS ===
 function esc(s) { const d=document.createElement("div"); d.textContent=s; return d.innerHTML; }
@@ -622,6 +638,7 @@ function renderTasks(app) {
 
 function renderNotes(app) {
   const sidebarOpen = state.sidebarOpen;
+  const noteTree = getNoteTree();
   let html = '';
 
   // Mobile toggle button
@@ -635,18 +652,20 @@ function renderNotes(app) {
   // Sidebar
   html += `<div class="notes-sidebar ${sidebarOpen?'open':''}">`;
   html += '<div class="ns-header"><span class="ns-title">Notes</span><button class="ns-add" onclick="addNoteToList([])" title="New note">+</button></div>';
-  html += renderNoteTree(state.notes, []);
+  html += renderNoteTreeHTML(noteTree, []);
   html += '</div>';
 
   // Delete confirmation overlay
   if (state.confirmDeletePath) {
-    const delNote = findNoteByPath(state.confirmDeletePath);
+    const delId = state.confirmDeletePath[state.confirmDeletePath.length - 1];
+    const delNote = findNoteFlat(delId);
     const name = delNote ? delNote.title : "this note";
-    const childCount = delNote && delNote.children ? delNote.children.length : 0;
+    const childCount = state.notesFlat.filter(n => n.parentId === delId).length;
+    const totalDescendants = collectDescendants(delId).length - 1;
     html += '<div style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;z-index:100;">';
     html += '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:24px;max-width:340px;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,0.1);">';
     html += `<div style="font-size:16px;color:var(--text2);margin-bottom:8px;">Delete "${esc(name)}"?</div>`;
-    if (childCount > 0) html += `<div style="font-size:12px;color:var(--red);margin-bottom:12px;font-family:var(--mono);">This note has ${childCount} sub-note${childCount>1?"s":""}. They will also be deleted.</div>`;
+    if (totalDescendants > 0) html += `<div style="font-size:12px;color:var(--red);margin-bottom:12px;font-family:var(--mono);">This will also delete ${totalDescendants} sub-note${totalDescendants>1?"s":""}.</div>`;
     else html += '<div style="font-size:12px;color:var(--dim);margin-bottom:12px;font-family:var(--mono);">This cannot be undone.</div>';
     html += '<div style="display:flex;gap:10px;justify-content:center;">';
     html += '<button onclick="executeDelete()" style="background:var(--red);border:none;color:#fff;padding:8px 20px;border-radius:6px;font-size:13px;cursor:pointer;font-family:var(--serif);">Delete</button>';
@@ -678,7 +697,7 @@ function renderNotes(app) {
   }
 }
 
-function renderNoteTree(list, parentPath, depth) {
+function renderNoteTreeHTML(list, parentPath, depth) {
   depth = depth || 0;
   if (!list || list.length === 0) return "";
   const maxIndent = 6;
@@ -711,7 +730,7 @@ function renderNoteTree(list, parentPath, depth) {
 
     // Render children recursively if expanded
     if (hasChildren && isExpanded) {
-      html += renderNoteTree(note.children, path, depth + 1);
+      html += renderNoteTreeHTML(note.children, path, depth + 1);
     }
   });
 
@@ -725,14 +744,17 @@ function copyLinkByPath(s, btn) { copyNoteLink(pathFromStr(s), btn); }
 
 function updateNoteField(field, value) {
   const note = getActiveNote();
-  if (note) note[field] = value;
+  if (!note) return;
+  note[field] = value;
+  
   // Update sidebar label directly via DOM if title changed
-  if (field === "title" && state.activePath) {
-    const activeId = state.activePath[state.activePath.length - 1];
-    const items = document.querySelectorAll("[data-note-id='" + activeId + "'] .ns-item-label");
+  if (field === "title") {
+    const items = document.querySelectorAll("[data-note-id='" + note.id + "'] .ns-item-label");
     items.forEach(el => { el.textContent = value || "Untitled"; });
   }
-  saveNotesDebounced();
+  
+  // Debounced save for just this one note
+  saveNoteDebounced(note.id);
 }
 
 // === URL HASH ROUTING ===
