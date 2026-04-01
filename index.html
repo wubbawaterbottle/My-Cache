@@ -185,7 +185,7 @@ body { background: var(--bg); color: var(--text); font-family: var(--serif); min
 <div class="container" id="app"><div class="loading">Loading Cache...</div></div>
 
 <script>
-const API_URL = "https://script.google.com/macros/s/AKfycbyxoCnKari_GGBhS3rDt0X5PE__gBNkizXlmYRBRAW-lmVfNmk7cd3kkXw2gGjwrQ-xiQ/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbyKsPfYY_G1O3520_4IWCjyqtnuQ2JpP__IQAETrgZi9wrznevl0XoDFBZnnMgadTfW9g/exec";
 
 const MODES = {
   all: { label: "All Tasks", icon: "◉", color: "#c4b5a0", desc: "Everything" },
@@ -208,7 +208,7 @@ let state = {
   saveStatus:"", loaded:false, error:null,
   // Notes (flat array from Sheet — each note is {id, parentId, title, content, sortOrder, createdAt})
   notesFlat:[], activePath:null, confirmDeletePath:null, sidebarOpen:false,
-  noteSaveTimers:{}, // per-note debounce timers
+  noteSaveTimers:{}, notesLiteLoaded:false, isLoading:false,
 };
 
 // === JSONP API ===
@@ -228,33 +228,90 @@ function apiPost(payload) { return apiCall("payload=" + encodeURIComponent(JSON.
 
 function showSave(msg, ok) { state.saveStatus = msg; render(); setTimeout(() => { state.saveStatus = ""; render(); }, ok ? 1500 : 3000); }
 
+// Loading indicator
+function setLoading(isLoading) {
+  state.isLoading = isLoading;
+  const el = document.getElementById("loadingIndicator");
+  if (el) el.style.display = isLoading ? "flex" : "none";
+}
+
 async function bgSync() {
+  // Only sync the current view to keep it fast
   try {
-    const data = await apiGet("getAll");
-    if (!data.error) {
-      state.tasks = data.tasks || [];
-      state.doneTasks = data.done || [];
-      if (data.settings && data.settings.categories) state.categories = data.settings.categories.split(",").map(s=>s.trim()).filter(Boolean);
-      
-      // Only sync notes if no pending per-note saves
-      const hasPendingSaves = Object.keys(state.noteSaveTimers).length > 0;
-      if (!hasPendingSaves && data.notes) {
-        state.notesFlat = data.notes;
+    if (state.view === "tasks") {
+      const data = await apiGet("getTasksOnly");
+      if (!data.error) {
+        state.tasks = data.tasks || [];
+        state.doneTasks = data.done || [];
+        if (data.settings && data.settings.categories) state.categories = data.settings.categories.split(",").map(s=>s.trim()).filter(Boolean);
+        render();
       }
-      render();
+    } else if (state.view === "notes") {
+      // Only sync note titles (lite), not content
+      const hasPendingSaves = Object.keys(state.noteSaveTimers).length > 0;
+      if (!hasPendingSaves) {
+        const notes = await apiGet("getNotesLite");
+        if (!notes.error && Array.isArray(notes)) {
+          // Merge: update titles/structure but keep locally loaded content
+          notes.forEach(serverNote => {
+            const local = state.notesFlat.find(n => n.id === serverNote.id);
+            if (local) {
+              local.title = serverNote.title;
+              local.parentId = serverNote.parentId;
+              local.sortOrder = serverNote.sortOrder;
+            } else {
+              // New note from another device — add without content (load on click)
+              state.notesFlat.push({ ...serverNote, content: undefined });
+            }
+          });
+          // Remove notes that no longer exist on server
+          const serverIds = notes.map(n => n.id);
+          state.notesFlat = state.notesFlat.filter(n => serverIds.includes(n.id));
+          render();
+        }
+      }
     }
   } catch(e) {}
 }
 
 // === DATA OPS (optimistic) ===
+
+// Initial load — tasks + settings only (fast)
 async function loadAll() {
-  const data = await apiGet("getAll");
-  if (data.error) { state.error = "Failed to load: " + data.error; state.loaded = true; render(); return; }
+  setLoading(true);
+  const data = await apiGet("getTasksOnly");
+  if (data.error) { state.error = "Failed to load: " + data.error; state.loaded = true; setLoading(false); render(); return; }
   state.tasks = data.tasks || [];
   state.doneTasks = data.done || [];
   if (data.settings && data.settings.categories) state.categories = data.settings.categories.split(",").map(s=>s.trim()).filter(Boolean);
-  state.notesFlat = data.notes || [];
-  state.loaded = true; state.error = null; render();
+  state.loaded = true; state.error = null; setLoading(false); render();
+}
+
+// Load notes structure (titles only) — called when switching to Notes tab
+async function loadNotesLite() {
+  if (state.notesLiteLoaded) return; // Already loaded
+  setLoading(true);
+  const notes = await apiGet("getNotesLite");
+  if (!notes.error && Array.isArray(notes)) {
+    state.notesFlat = notes.map(n => ({ ...n, content: undefined })); // No content yet
+    state.notesLiteLoaded = true;
+  }
+  setLoading(false);
+  render();
+}
+
+// Load single note content — called when clicking a note
+async function loadNoteContent(noteId) {
+  const note = state.notesFlat.find(n => n.id === noteId);
+  if (note && note.content !== undefined) return; // Already loaded
+  setLoading(true);
+  const result = await apiCall("action=getNoteContent&noteId=" + noteId);
+  if (!result.error && result.content !== undefined) {
+    const note = state.notesFlat.find(n => n.id === noteId);
+    if (note) note.content = result.content;
+  }
+  setLoading(false);
+  render();
 }
 
 async function addTask() {
@@ -494,8 +551,17 @@ function closeAllPanels(except) {
 function render() {
   // Nav tabs
   document.getElementById("navTabs").innerHTML =
-    `<button class="nav-tab ${state.view==="notes"?"active":""}" onclick="state.view='notes';updateHash();render()">Notes</button>` +
-    `<button class="nav-tab ${state.view==="tasks"?"active":""}" onclick="state.view='tasks';updateHash();render()">Tasks</button>`;
+    `<button class="nav-tab ${state.view==="notes"?"active":""}" onclick="state.view='notes';updateHash();loadNotesLite();render()">Notes</button>` +
+    `<button class="nav-tab ${state.view==="tasks"?"active":""}" onclick="state.view='tasks';updateHash();render()">Tasks</button>` +
+    `<div id="loadingIndicator" style="display:${state.isLoading?"flex":"none"};align-items:center;padding:0 12px;"><div style="width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--amber);border-radius:50%;animation:spin 0.8s linear infinite;"></div></div>`;
+
+  // Inject spinner animation if not already present
+  if (!document.getElementById("spinnerCSS")) {
+    const style = document.createElement("style");
+    style.id = "spinnerCSS";
+    style.textContent = "@keyframes spin { to { transform: rotate(360deg); } }";
+    document.head.appendChild(style);
+  }
 
   const app = document.getElementById("app");
   if (!state.loaded) { app.innerHTML='<div class="loading">Loading Cache...</div>'; return; }
@@ -681,7 +747,12 @@ function renderNotes(app) {
     html += `<button class="note-sub-add" onclick="addNoteToList(pathFromStr('${state.activePath.join("|")}'))">+ Sub-note</button>`;
     html += '</div>';
     html += `<input class="note-title-input" id="noteTitleInput" value="${esc(activeNote.title)}" oninput="updateNoteField('title',this.value)" placeholder="Note title">`;
-    html += `<div class="note-body" id="noteBody" contenteditable="true" oninput="updateNoteField('content',this.innerText)" data-placeholder="Start writing...">${esc(activeNote.content||"").replace(/\n/g,"<br>")}</div>`;
+    if (activeNote.content === undefined) {
+      // Content not loaded yet
+      html += '<div style="color:var(--dim);font-size:14px;padding:20px 0;">Loading note...</div>';
+    } else {
+      html += `<div class="note-body" id="noteBody" contenteditable="true" oninput="updateNoteField('content',this.innerText)" data-placeholder="Start writing...">${esc(activeNote.content||"").replace(/\n/g,"<br>")}</div>`;
+    }
   } else {
     html += '<div class="note-empty">Select a note or click + to create one</div>';
   }
@@ -792,6 +863,14 @@ function navigateToNote(pathArr) {
   state.sidebarOpen = false;
   updateHash();
   render();
+  // Load content for the selected note if not already loaded
+  if (pathArr && pathArr.length > 0) {
+    const noteId = pathArr[pathArr.length - 1];
+    const note = state.notesFlat.find(n => n.id === noteId);
+    if (note && note.content === undefined) {
+      loadNoteContent(noteId);
+    }
+  }
 }
 
 function copyNoteLink(pathArr, btnEl) {
@@ -810,9 +889,19 @@ window.addEventListener("hashchange", () => { readHash(); render(); });
 async function init() {
   await loadAll();
   readHash();
+  
+  // If hash pointed to notes, lazy-load notes structure + content
+  if (state.view === "notes") {
+    await loadNotesLite();
+    if (state.activePath && state.activePath.length > 0) {
+      const noteId = state.activePath[state.activePath.length - 1];
+      await loadNoteContent(noteId);
+    }
+  }
+  
   render();
-  // Poll for changes every 10 seconds (cross-device sync)
-  // Only syncs when user is NOT actively typing in notes
+  
+  // Poll for changes every 10 seconds
   setInterval(() => {
     const body = document.getElementById("noteBody");
     const isTyping = body && document.activeElement === body;
