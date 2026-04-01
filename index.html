@@ -409,13 +409,35 @@ function buildNoteTree(flatNotes, parentId) {
 
 function getNoteTree() { return buildNoteTree(state.notesFlat, ""); }
 
-// Save a single note (debounced per-note)
+// Save a single note (debounced per-note) with status dot
+function setSaveDot(color) {
+  const dot = document.getElementById("saveDot");
+  if (dot) { dot.style.background = color; dot.style.display = "block"; }
+}
+function hideSaveDot() {
+  const dot = document.getElementById("saveDot");
+  if (dot) setTimeout(() => { dot.style.display = "none"; }, 2000);
+}
+
 function saveNoteDebounced(noteId) {
+  // Yellow = local changes pending
+  setSaveDot("#d4a056");
   if (state.noteSaveTimers[noteId]) clearTimeout(state.noteSaveTimers[noteId]);
   state.noteSaveTimers[noteId] = setTimeout(async () => {
     delete state.noteSaveTimers[noteId];
     const note = state.notesFlat.find(n => n.id === noteId);
-    if (note) await apiPost({ action: "saveNote", note });
+    if (note) {
+      // Still yellow while sending
+      const result = await apiPost({ action: "saveNote", note });
+      if (result && !result.error) {
+        // Green = saved to sheet
+        setSaveDot("#5a7a4a");
+        hideSaveDot();
+      } else {
+        // Red = save failed
+        setSaveDot("#b04040");
+      }
+    }
   }, 2000);
 }
 
@@ -553,7 +575,10 @@ function render() {
   document.getElementById("navTabs").innerHTML =
     `<button class="nav-tab ${state.view==="notes"?"active":""}" onclick="state.view='notes';updateHash();loadNotesLite();render()">Notes</button>` +
     `<button class="nav-tab ${state.view==="tasks"?"active":""}" onclick="state.view='tasks';updateHash();render()">Tasks</button>` +
-    `<div id="loadingIndicator" style="display:${state.isLoading?"flex":"none"};align-items:center;padding:0 12px;"><div style="width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--amber);border-radius:50%;animation:spin 0.8s linear infinite;"></div></div>`;
+    `<div style="display:flex;align-items:center;gap:8px;padding:0 12px;margin-left:auto;">` +
+    `<div id="saveDot" style="display:none;width:10px;height:10px;border-radius:50%;transition:background 0.3s;" title="Yellow=saving, Green=saved"></div>` +
+    `<div id="loadingIndicator" style="display:${state.isLoading?"flex":"none"};align-items:center;"><div style="width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--amber);border-radius:50%;animation:spin 0.8s linear infinite;"></div></div>` +
+    `</div>`;
 
   // Inject spinner animation if not already present
   if (!document.getElementById("spinnerCSS")) {
