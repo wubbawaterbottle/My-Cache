@@ -124,8 +124,8 @@ body { background: var(--bg); color: var(--text); font-family: var(--serif); min
 .error-banner { background:#fef0f0; border:1px solid var(--redborder); color:var(--red); padding:10px 14px; border-radius:6px; margin-bottom:16px; font-size:13px; font-family:var(--mono); }
 
 /* === NOTES SYSTEM === */
-.notes-container { display:flex; gap:0; min-height:70vh; }
-.notes-sidebar { width:240px; flex-shrink:0; border-right:1px solid var(--border); padding:12px 0; overflow-y:auto; }
+.notes-container { display:flex; gap:0; min-height:70vh; position:relative; }
+.notes-sidebar { width:240px; flex-shrink:0; border-right:1px solid var(--border); padding:12px 0; overflow-y:auto; max-height:calc(100vh - 80px); }
 .notes-main { flex:1; padding:16px 24px; display:flex; flex-direction:column; min-width:0; }
 .ns-header { display:flex; justify-content:space-between; align-items:center; padding:0 12px 10px; border-bottom:1px solid var(--border); margin-bottom:8px; }
 .ns-title { font-size:12px; color:var(--dim); font-family:var(--mono); text-transform:uppercase; letter-spacing:2px; }
@@ -149,17 +149,33 @@ body { background: var(--bg); color: var(--text); font-family: var(--serif); min
 .ns-move-btn:hover { color:var(--text); }
 
 .note-editor { flex:1; display:flex; flex-direction:column; }
-.note-title-input { background:transparent; border:none; color:var(--text3); font-size:20px; font-family:var(--serif); padding:4px 0; margin-bottom:12px; outline:none; border-bottom:1px solid var(--border); }
-.note-textarea { flex:1; width:100%; background:var(--bg2); border:1px solid var(--border); color:var(--text); font-size:15px; font-family:var(--serif); padding:12px; border-radius:6px; outline:none; resize:none; min-height:300px; line-height:1.6; }
+.note-title-input { background:transparent; border:none; color:var(--text3); font-size:22px; font-family:var(--serif); padding:4px 0; margin-bottom:16px; outline:none; border-bottom:1px solid var(--border); }
+.note-body { width:100%; background:transparent; border:none; color:var(--text); font-size:16px; font-family:var(--serif); padding:0; outline:none; resize:none; min-height:200px; line-height:1.7; overflow:hidden; white-space:pre-wrap; word-wrap:break-word; }
+.note-body.empty-placeholder:before { content:attr(data-placeholder); color:var(--dim3); pointer-events:none; }
 .note-empty { color:var(--dim); font-size:14px; text-align:center; padding:60px 20px; }
 .note-sub-header { display:flex; align-items:center; gap:8px; margin-bottom:10px; }
 .note-sub-add { background:var(--border); border:1px solid var(--border2); color:var(--text); padding:4px 10px; border-radius:4px; font-size:11px; cursor:pointer; font-family:var(--mono); }
 
-@media (max-width:600px) {
-  .container { max-width:100%; }
-  .notes-sidebar { width:160px; }
-  .ns-item { padding:8px 8px; font-size:12px; }
-  .notes-main { padding:12px; }
+/* Mobile sidebar toggle */
+.ns-toggle { display:none; background:transparent; border:1px solid var(--border); color:var(--text); padding:6px 12px; border-radius:6px; font-size:12px; cursor:pointer; font-family:var(--mono); margin-bottom:10px; }
+.ns-overlay { display:none; }
+
+@media (max-width:700px) {
+  .container { max-width:100%; padding:16px 12px; }
+  .notes-sidebar {
+    position:fixed; top:0; left:0; bottom:0; width:260px; z-index:90;
+    background:var(--bg); border-right:1px solid var(--border);
+    transform:translateX(-100%); transition:transform 0.2s ease;
+    padding-top:16px; overflow-y:auto;
+  }
+  .notes-sidebar.open { transform:translateX(0); }
+  .ns-overlay { display:block; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.2); z-index:80; }
+  .ns-overlay.hidden { display:none; }
+  .ns-toggle { display:inline-flex; align-items:center; gap:6px; }
+  .ns-item-actions { opacity:1; }
+  .notes-main { padding:8px 4px; }
+  .note-title-input { font-size:18px; }
+  .note-body { font-size:15px; }
 }
 </style>
 </head>
@@ -191,7 +207,7 @@ let state = {
   newCatName:"", renamingCat:null, renameCatValue:"",
   saveStatus:"", loaded:false, error:null,
   // Notes
-  notes:[], activePath:null, confirmDeletePath:null,
+  notes:[], activePath:null, confirmDeletePath:null, sidebarOpen:false,
   notesDirty:false, notesSaveTimer:null,
 };
 
@@ -591,10 +607,19 @@ function renderTasks(app) {
 }
 
 function renderNotes(app) {
-  let html = '<div class="notes-container">';
+  const sidebarOpen = state.sidebarOpen;
+  let html = '';
+
+  // Mobile toggle button
+  html += `<button class="ns-toggle" onclick="state.sidebarOpen=!state.sidebarOpen;render()">☰ Notes</button>`;
+
+  html += '<div class="notes-container">';
+
+  // Overlay for mobile
+  html += `<div class="ns-overlay ${sidebarOpen?'':'hidden'}" onclick="state.sidebarOpen=false;render()"></div>`;
 
   // Sidebar
-  html += '<div class="notes-sidebar">';
+  html += `<div class="notes-sidebar ${sidebarOpen?'open':''}">`;
   html += '<div class="ns-header"><span class="ns-title">Notes</span><button class="ns-add" onclick="addNoteToList([])" title="New note">+</button></div>';
   html += renderNoteTree(state.notes, []);
   html += '</div>';
@@ -623,12 +648,20 @@ function renderNotes(app) {
     html += `<button class="note-sub-add" onclick="addNoteToList(pathFromStr('${state.activePath.join("|")}'))">+ Sub-note</button>`;
     html += '</div>';
     html += `<input class="note-title-input" id="noteTitleInput" value="${esc(activeNote.title)}" oninput="updateNoteField('title',this.value)" placeholder="Note title">`;
-    html += `<textarea class="note-textarea" oninput="updateNoteField('content',this.value)" placeholder="Start writing...">${esc(activeNote.content||"")}</textarea>`;
+    html += `<div class="note-body" id="noteBody" contenteditable="true" oninput="updateNoteField('content',this.innerText)" data-placeholder="Start writing...">${esc(activeNote.content||"").replace(/\n/g,"<br>")}</div>`;
   } else {
     html += '<div class="note-empty">Select a note or click + to create one</div>';
   }
   html += '</div></div>';
   app.innerHTML = html;
+
+  // Setup contenteditable placeholder
+  const body = document.getElementById("noteBody");
+  if (body) {
+    if (!body.innerText.trim()) body.classList.add("empty-placeholder");
+    body.addEventListener("focus", () => body.classList.remove("empty-placeholder"));
+    body.addEventListener("blur", () => { if (!body.innerText.trim()) body.classList.add("empty-placeholder"); });
+  }
 }
 
 function renderNoteTree(list, parentPath, depth) {
@@ -720,6 +753,7 @@ function readHash() {
 function navigateToNote(pathArr) {
   state.activePath = pathArr;
   state.view = "notes";
+  state.sidebarOpen = false;
   updateHash();
   render();
 }
@@ -741,6 +775,17 @@ async function init() {
   await loadAll();
   readHash();
   render();
+  // Poll for changes every 10 seconds (cross-device sync)
+  // Only syncs when user is NOT actively typing in notes
+  setInterval(() => {
+    const body = document.getElementById("noteBody");
+    const isTyping = body && document.activeElement === body;
+    const titleInput = document.getElementById("noteTitleInput");
+    const isTypingTitle = titleInput && document.activeElement === titleInput;
+    if (!isTyping && !isTypingTitle) {
+      bgSync();
+    }
+  }, 10000);
 }
 init();
 </script>
