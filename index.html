@@ -232,10 +232,18 @@ async function bgSync() {
   try {
     const data = await apiGet("getAll");
     if (!data.error) {
+      // Always sync tasks (they're managed through API, not edited live)
       state.tasks = data.tasks || [];
       state.doneTasks = data.done || [];
       if (data.settings && data.settings.categories) state.categories = data.settings.categories.split(",").map(s=>s.trim()).filter(Boolean);
-      if (data.notes) state.notes = data.notes;
+      
+      // Only sync notes from server if we have NO unsaved local changes
+      // This prevents another device's stale load from overwriting your edits
+      const notesAreDirty = Date.now() < notesDirtyUntil;
+      if (!notesAreDirty && data.notes) {
+        state.notes = data.notes;
+      }
+      
       render();
     }
   } catch(e) {}
@@ -333,11 +341,17 @@ async function saveRenameCategory() {
 }
 
 // === NOTES OPS (recursive infinite nesting) ===
+let notesDirtyUntil = 0; // timestamp — notes are "dirty" until this time passes
+
 function saveNotesDebounced() {
+  // Mark notes as dirty for 5 seconds after last edit (prevents bgSync from overwriting)
+  notesDirtyUntil = Date.now() + 5000;
   if (state.notesSaveTimer) clearTimeout(state.notesSaveTimer);
   state.notesSaveTimer = setTimeout(async () => {
     await apiPost({ action:"saveNotes", notes:state.notes });
-  }, 5000);
+    // After successful save, keep dirty for 2 more seconds to let it propagate
+    notesDirtyUntil = Date.now() + 2000;
+  }, 2000);
 }
 
 // Navigate the tree by path (array of IDs)
