@@ -251,7 +251,6 @@ function setLoading(isLoading) {
 }
 
 async function bgSync() {
-  // Only sync the current view to keep it fast
   try {
     if (state.view === "tasks") {
       const data = await apiGet("getTasksOnly");
@@ -262,28 +261,40 @@ async function bgSync() {
         render();
       }
     } else if (state.view === "notes") {
-      // Only sync note titles (lite), not content
-      const hasPendingSaves = Object.keys(state.noteSaveTimers).length > 0;
-      if (!hasPendingSaves) {
-        const notes = await apiGet("getNotesLite");
-        if (!notes.error && Array.isArray(notes)) {
-          // Merge: update titles/structure but keep locally loaded content
-          notes.forEach(serverNote => {
-            const local = state.notesFlat.find(n => n.id === serverNote.id);
-            if (local) {
+      // Don't sync if ANY saves are pending or notes are being created
+      const hasPendingSaves = Object.keys(state.noteSaveTimers).length > 0 || Object.keys(creatingNotes).length > 0 || Object.keys(titleSaveTimers).length > 0 || Object.keys(contentSaveTimers).length > 0;
+      if (hasPendingSaves) return;
+      
+      // Don't sync if user is actively typing in title or body
+      const titleInput = document.getElementById("noteTitleInput");
+      const bodyEl = document.getElementById("noteBody");
+      const isTyping = (titleInput && document.activeElement === titleInput) || (bodyEl && document.activeElement === bodyEl);
+      if (isTyping) return;
+      
+      const notes = await apiGet("getNotesLite");
+      if (!notes.error && Array.isArray(notes)) {
+        const activeId = state.activePath ? state.activePath[state.activePath.length - 1] : null;
+        
+        notes.forEach(serverNote => {
+          const local = state.notesFlat.find(n => n.id === serverNote.id);
+          if (local) {
+            // NEVER overwrite the active note's title — user might be editing it
+            if (serverNote.id !== activeId) {
               local.title = serverNote.title;
-              local.parentId = serverNote.parentId;
-              local.sortOrder = serverNote.sortOrder;
-            } else {
-              // New note from another device — add without content (load on click)
-              state.notesFlat.push({ ...serverNote, content: undefined });
             }
-          });
-          // Remove notes that no longer exist on server
-          const serverIds = notes.map(n => n.id);
-          state.notesFlat = state.notesFlat.filter(n => serverIds.includes(n.id));
-          render();
-        }
+            local.parentId = serverNote.parentId;
+            local.sortOrder = serverNote.sortOrder;
+          } else {
+            state.notesFlat.push({ ...serverNote, content: undefined });
+          }
+        });
+        
+        // Remove notes that no longer exist on server (but keep locally created notes that haven't synced yet)
+        const serverIds = notes.map(n => n.id);
+        state.notesFlat = state.notesFlat.filter(n => serverIds.includes(n.id) || creatingNotes[n.id]);
+        
+        // Only re-render if not typing
+        if (!isTyping) render();
       }
     }
   } catch(e) {}
@@ -439,10 +450,13 @@ let titleSaveTimers = {};
 let contentSaveTimers = {};
 
 function saveNoteTitleDebounced(noteId) {
+  // Don't save title if note is still being created on server
+  if (creatingNotes[noteId]) return;
   setSaveDot("#d4a056");
   if (titleSaveTimers[noteId]) clearTimeout(titleSaveTimers[noteId]);
   titleSaveTimers[noteId] = setTimeout(async () => {
     delete titleSaveTimers[noteId];
+    if (creatingNotes[noteId]) return; // Double-check
     const note = state.notesFlat.find(n => n.id === noteId);
     if (note) {
       const result = await apiPost({ action: "saveNote", note: { id: note.id, parentId: note.parentId, title: note.title, sortOrder: note.sortOrder } });
@@ -453,15 +467,17 @@ function saveNoteTitleDebounced(noteId) {
 }
 
 function saveNoteContentDebounced(noteId) {
+  // Don't save content if note is still being created on server
+  if (creatingNotes[noteId]) return;
   setSaveDot("#d4a056");
   if (contentSaveTimers[noteId]) clearTimeout(contentSaveTimers[noteId]);
-  state.noteSaveTimers[noteId] = true; // Mark as having pending save
+  state.noteSaveTimers[noteId] = true;
   contentSaveTimers[noteId] = setTimeout(async () => {
     delete contentSaveTimers[noteId];
     delete state.noteSaveTimers[noteId];
+    if (creatingNotes[noteId]) return; // Double-check
     const note = state.notesFlat.find(n => n.id === noteId);
     if (note && note.content !== undefined) {
-      // Use hidden form POST for content (handles large text, no URL length limit)
       const result = await apiPostForm({ action: "saveNoteContent", noteId: noteId, content: note.content });
       if (result && !result.error) { setSaveDot("#5a7a4a"); hideSaveDot(); }
       else { setSaveDot("#b04040"); }
@@ -545,27 +561,50 @@ function getChildren(parentId) {
     .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
 }
 
+// Track notes that are still being created on the server
+let creatingNotes = {};
+
 function addNoteToList(parentPath) {
-  const id = "n_" + Date.now();
+  const id = "n_" + Date.now() + "_" + Math.random().toString(36).substr(2,4);
   const parentId = parentPath && parentPath.length > 0 ? parentPath[parentPath.length - 1] : "";
   const siblings = getChildren(parentId);
   
   // Shift all siblings' sort order up by 1 to make room at top
   siblings.forEach(s => { s.sortOrder = (s.sortOrder || 0) + 1; });
-  const sortOrder = 0; // New note goes to top
+  const sortOrder = 0;
   
   state.notesFlat.push({ id, parentId, title: "Untitled", content: "", sortOrder, createdAt: new Date().toISOString() });
   state.activePath = parentPath ? [...parentPath, id] : [id];
   
-  // Expand parent
   if (parentId) expandedNodes[parentId] = true;
   
+  // Mark as creating — blocks ALL saves for this note until creation completes
+  creatingNotes[id] = true;
+  
   render();
-  // Save new note + reorder siblings
-  apiPost({ action: "saveNote", note: { id, parentId, title: "Untitled", content: "", sortOrder } });
-  const reorderUpdates = siblings.map(s => ({ id: s.id, sortOrder: s.sortOrder }));
-  if (reorderUpdates.length > 0) apiPost({ action: "reorderNotes", updates: reorderUpdates });
-  setTimeout(() => { const el = document.getElementById("noteTitleInput"); if (el) { el.focus(); el.select(); } }, 50);
+  
+  // Serialize: create the note FIRST, then reorder siblings AFTER
+  (async () => {
+    try {
+      await apiPost({ action: "saveNote", note: { id, parentId, title: "Untitled", content: "", sortOrder } });
+      
+      // Now reorder siblings (only after the note exists on server)
+      const reorderUpdates = siblings.map(s => ({ id: s.id, sortOrder: s.sortOrder }));
+      if (reorderUpdates.length > 0) {
+        await apiPost({ action: "reorderNotes", updates: reorderUpdates });
+      }
+    } finally {
+      delete creatingNotes[id];
+    }
+    
+    // If user already changed the title while we were creating, save it now
+    const note = findNoteFlat(id);
+    if (note && note.title !== "Untitled") {
+      saveNoteTitleDebounced(id);
+    }
+  })();
+  
+  setTimeout(() => { const el = document.getElementById("noteTitleInput"); if (el) { el.focus(); el.select(); } }, 100);
 }
 
 function confirmDeleteNote(pathStr) {
@@ -784,7 +823,20 @@ function closeAllPanels(except) {
 }
 
 // === RENDER ===
-function render() {
+function render(force) {
+  // GUARD: Don't re-render notes view while user is actively editing
+  // This prevents the DOM from being rebuilt, which would destroy cursor position and typed text
+  if (!force && state.view === "notes") {
+    const titleInput = document.getElementById("noteTitleInput");
+    const bodyEl = document.getElementById("noteBody");
+    const isTyping = (titleInput && document.activeElement === titleInput) || (bodyEl && document.activeElement === bodyEl);
+    if (isTyping) {
+      // Only update the sidebar labels without rebuilding the editor
+      updateSidebarOnly();
+      return;
+    }
+  }
+
   // Nav tabs
   document.getElementById("navTabs").innerHTML =
     `<button class="nav-tab ${state.view==="notes"?"active":""}" onclick="state.view='notes';updateHash();loadNotesLite();render()">Notes</button>` +
@@ -807,6 +859,14 @@ function render() {
 
   if (state.view === "notes") { renderNotes(app); return; }
   renderTasks(app);
+}
+
+function updateSidebarOnly() {
+  const sidebar = document.querySelector(".notes-sidebar");
+  if (!sidebar) return;
+  const noteTree = getNoteTree();
+  const headerHTML = '<div class="ns-header"><span class="ns-title">Notes</span><button class="ns-add" onclick="addNoteToList([])" title="New note">+</button></div>';
+  sidebar.innerHTML = headerHTML + renderNoteTreeHTML(noteTree, []);
 }
 
 function renderTasks(app) {
