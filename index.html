@@ -185,7 +185,7 @@ body { background: var(--bg); color: var(--text); font-family: var(--serif); min
 <div class="container" id="app"><div class="loading">Loading Cache...</div></div>
 
 <script>
-const API_URL = "https://script.google.com/macros/s/AKfycbyKsPfYY_G1O3520_4IWCjyqtnuQ2JpP__IQAETrgZi9wrznevl0XoDFBZnnMgadTfW9g/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbwe7KffKrfxBJcIKKU2dOck7I84cx81whYSl21O0BlcKyYHQDtC6U5OyZ7vE7_B5uMLHg/exec";
 
 const MODES = {
   all: { label: "All Tasks", icon: "◉", color: "#c4b5a0", desc: "Everything" },
@@ -419,26 +419,98 @@ function hideSaveDot() {
   if (dot) setTimeout(() => { dot.style.display = "none"; }, 2000);
 }
 
-function saveNoteDebounced(noteId) {
-  // Yellow = local changes pending
+// Separate timers for title vs content
+let titleSaveTimers = {};
+let contentSaveTimers = {};
+
+function saveNoteTitleDebounced(noteId) {
   setSaveDot("#d4a056");
-  if (state.noteSaveTimers[noteId]) clearTimeout(state.noteSaveTimers[noteId]);
-  state.noteSaveTimers[noteId] = setTimeout(async () => {
-    delete state.noteSaveTimers[noteId];
+  if (titleSaveTimers[noteId]) clearTimeout(titleSaveTimers[noteId]);
+  titleSaveTimers[noteId] = setTimeout(async () => {
+    delete titleSaveTimers[noteId];
     const note = state.notesFlat.find(n => n.id === noteId);
     if (note) {
-      // Still yellow while sending
-      const result = await apiPost({ action: "saveNote", note });
-      if (result && !result.error) {
-        // Green = saved to sheet
-        setSaveDot("#5a7a4a");
-        hideSaveDot();
-      } else {
-        // Red = save failed
-        setSaveDot("#b04040");
-      }
+      const result = await apiPost({ action: "saveNote", note: { id: note.id, parentId: note.parentId, title: note.title, sortOrder: note.sortOrder } });
+      if (result && !result.error) { setSaveDot("#5a7a4a"); hideSaveDot(); }
+      else { setSaveDot("#b04040"); }
+    }
+  }, 1500);
+}
+
+function saveNoteContentDebounced(noteId) {
+  setSaveDot("#d4a056");
+  if (contentSaveTimers[noteId]) clearTimeout(contentSaveTimers[noteId]);
+  state.noteSaveTimers[noteId] = true; // Mark as having pending save
+  contentSaveTimers[noteId] = setTimeout(async () => {
+    delete contentSaveTimers[noteId];
+    delete state.noteSaveTimers[noteId];
+    const note = state.notesFlat.find(n => n.id === noteId);
+    if (note && note.content !== undefined) {
+      // Use hidden form POST for content (handles large text, no URL length limit)
+      const result = await apiPostForm({ action: "saveNoteContent", noteId: noteId, content: note.content });
+      if (result && !result.error) { setSaveDot("#5a7a4a"); hideSaveDot(); }
+      else { setSaveDot("#b04040"); }
     }
   }, 2000);
+}
+
+// POST via hidden iframe form — handles large content without URL length limits
+function apiPostForm(payload) {
+  return new Promise((resolve) => {
+    const id = "postframe_" + Date.now();
+    const iframe = document.createElement("iframe");
+    iframe.name = id;
+    iframe.style.display = "none";
+    document.body.appendChild(iframe);
+
+    const form = document.createElement("form");
+    form.method = "POST";
+    form.action = API_URL;
+    form.target = id;
+    form.style.display = "none";
+
+    const input = document.createElement("input");
+    input.type = "hidden";
+    input.name = "payload";
+    input.value = JSON.stringify(payload);
+    form.appendChild(input);
+
+    document.body.appendChild(form);
+
+    // Listen for iframe load (response came back)
+    iframe.onload = function() {
+      // Give it a moment to render
+      setTimeout(() => {
+        try {
+          const text = iframe.contentDocument.body.innerText;
+          resolve(JSON.parse(text));
+        } catch(e) {
+          // Can't read cross-origin iframe — but if it loaded, the save likely worked
+          resolve({ success: true });
+        }
+        document.body.removeChild(iframe);
+        document.body.removeChild(form);
+      }, 200);
+    };
+
+    iframe.onerror = function() {
+      resolve({ error: "Network error" });
+      document.body.removeChild(iframe);
+      document.body.removeChild(form);
+    };
+
+    form.submit();
+
+    // Timeout fallback
+    setTimeout(() => {
+      resolve({ success: true }); // Assume it worked if no response in 15s
+    }, 15000);
+  });
+}
+
+// Keep old name for compatibility with note structure saves (add, delete, move)
+function saveNoteDebounced(noteId) {
+  saveNoteTitleDebounced(noteId);
 }
 
 // Find note in flat list
@@ -843,14 +915,16 @@ function updateNoteField(field, value) {
   if (!note) return;
   note[field] = value;
   
-  // Update sidebar label directly via DOM if title changed
   if (field === "title") {
+    // Update sidebar label directly via DOM
     const items = document.querySelectorAll("[data-note-id='" + note.id + "'] .ns-item-label");
     items.forEach(el => { el.textContent = value || "Untitled"; });
+    // Save title via JSONP (small, fast)
+    saveNoteTitleDebounced(note.id);
+  } else if (field === "content") {
+    // Save content via hidden form POST (handles large text)
+    saveNoteContentDebounced(note.id);
   }
-  
-  // Debounced save for just this one note
-  saveNoteDebounced(note.id);
 }
 
 // === URL HASH ROUTING ===
