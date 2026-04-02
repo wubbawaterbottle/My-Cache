@@ -1043,7 +1043,6 @@ function renderNotes(app) {
   html += '<div class="notes-main">';
   const activeNote = getActiveNote();
   if (activeNote) {
-    html += '</div>';
     html += `<input class="note-title-input" id="noteTitleInput" value="${esc(activeNote.title)}" oninput="updateNoteField('title',this.value)" onkeydown="if(event.key==='Tab'){event.preventDefault();var b=document.getElementById('noteBody');if(b)b.focus();}" placeholder="Note title">`;
     
     // Formatting toolbar
@@ -1121,7 +1120,9 @@ function renderNotes(app) {
       // Tab = insert 5 spaces
       if (e.key === "Tab") {
         e.preventDefault();
-        document.execCommand("insertHTML", false, "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;");
+        // Insert 6 non-breaking spaces (unicode \u00A0) — these won't collapse in HTML
+        var tabStr = "\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0";
+        document.execCommand("insertText", false, tabStr);
         onNoteBodyInput();
       }
       // Ctrl+Shift+X = strikethrough
