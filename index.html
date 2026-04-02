@@ -149,9 +149,19 @@ body { background: var(--bg); color: var(--text); font-family: var(--serif); min
 .ns-move-btn:hover { color:var(--text); }
 
 .note-editor { flex:1; display:flex; flex-direction:column; }
-.note-title-input { background:transparent; border:none; color:var(--text3); font-size:22px; font-family:var(--serif); padding:4px 0; margin-bottom:16px; outline:none; border-bottom:1px solid var(--border); }
+.note-title-input { background:transparent; border:none; color:var(--text3); font-size:22px; font-family:var(--serif); padding:4px 0; margin-bottom:12px; outline:none; border-bottom:1px solid var(--border); }
+
+/* Formatting toolbar */
+.note-toolbar { display:flex; gap:2px; padding:4px 0; margin-bottom:12px; border-bottom:1px solid var(--border); flex-wrap:wrap; }
+.note-toolbar button { background:transparent; border:1px solid transparent; color:var(--dim); padding:4px 8px; border-radius:4px; font-size:13px; cursor:pointer; font-family:var(--mono); transition:all 0.1s; min-width:30px; text-align:center; }
+.note-toolbar button:hover { background:var(--bg3); color:var(--text); border-color:var(--border); }
+.note-toolbar button.active { background:var(--bg3); color:var(--amber); border-color:var(--border2); }
+.note-toolbar .tb-sep { width:1px; background:var(--border); margin:2px 4px; }
+
 .note-body { width:100%; background:transparent; border:none; color:var(--text); font-size:16px; font-family:var(--serif); padding:0; outline:none; resize:none; min-height:200px; line-height:1.7; overflow:hidden; white-space:pre-wrap; word-wrap:break-word; }
 .note-body.empty-placeholder:before { content:attr(data-placeholder); color:var(--dim3); pointer-events:none; }
+.note-body a { color:var(--blue); text-decoration:underline; cursor:pointer; }
+.note-body a:hover { color:var(--amber); }
 .note-empty { color:var(--dim); font-size:14px; text-align:center; padding:60px 20px; }
 .note-sub-header { display:flex; align-items:center; gap:8px; margin-bottom:10px; }
 .note-sub-add { background:var(--border); border:1px solid var(--border2); color:var(--text); padding:4px 10px; border-radius:4px; font-size:11px; cursor:pointer; font-family:var(--mono); }
@@ -844,11 +854,22 @@ function renderNotes(app) {
     html += `<button class="note-sub-add" onclick="addNoteToList(pathFromStr('${state.activePath.join("|")}'))">+ Sub-note</button>`;
     html += '</div>';
     html += `<input class="note-title-input" id="noteTitleInput" value="${esc(activeNote.title)}" oninput="updateNoteField('title',this.value)" placeholder="Note title">`;
+    
+    // Formatting toolbar
+    html += '<div class="note-toolbar">';
+    html += '<button onmousedown="event.preventDefault();document.execCommand(\'bold\')" title="Bold (Ctrl+B)"><b>B</b></button>';
+    html += '<button onmousedown="event.preventDefault();document.execCommand(\'italic\')" title="Italic (Ctrl+I)"><i>I</i></button>';
+    html += '<button onmousedown="event.preventDefault();document.execCommand(\'underline\')" title="Underline (Ctrl+U)"><u>U</u></button>';
+    html += '<button onmousedown="event.preventDefault();document.execCommand(\'strikeThrough\')" title="Strikethrough"><s>S</s></button>';
+    html += '<div class="tb-sep"></div>';
+    html += '<button onmousedown="event.preventDefault();insertLink()" title="Insert Link">🔗</button>';
+    html += '</div>';
+    
     if (activeNote.content === undefined) {
-      // Content not loaded yet
       html += '<div style="color:var(--dim);font-size:14px;padding:20px 0;">Loading note...</div>';
     } else {
-      html += `<div class="note-body" id="noteBody" contenteditable="true" oninput="updateNoteField('content',this.innerText)" data-placeholder="Start writing...">${esc(activeNote.content||"").replace(/\n/g,"<br>")}</div>`;
+      // Render content as HTML (rich text)
+      html += `<div class="note-body" id="noteBody" contenteditable="true" oninput="onNoteBodyInput()" data-placeholder="Start writing...">${activeNote.content||""}</div>`;
     }
   } else {
     html += '<div class="note-empty">Select a note or click + to create one</div>';
@@ -856,12 +877,38 @@ function renderNotes(app) {
   html += '</div></div>';
   app.innerHTML = html;
 
-  // Setup contenteditable placeholder
+  // Setup contenteditable placeholder + keyboard shortcuts
   const body = document.getElementById("noteBody");
   if (body) {
     if (!body.innerText.trim()) body.classList.add("empty-placeholder");
     body.addEventListener("focus", () => body.classList.remove("empty-placeholder"));
     body.addEventListener("blur", () => { if (!body.innerText.trim()) body.classList.add("empty-placeholder"); });
+    // Make links clickable with Ctrl/Cmd+click
+    body.addEventListener("click", (e) => {
+      if (e.target.tagName === "A" && (e.ctrlKey || e.metaKey)) {
+        window.open(e.target.href, "_blank");
+      }
+    });
+    // Keyboard shortcuts
+    body.addEventListener("keydown", (e) => {
+      // Tab = insert 5 spaces
+      if (e.key === "Tab") {
+        e.preventDefault();
+        document.execCommand("insertText", false, "     ");
+        onNoteBodyInput();
+      }
+      // Ctrl+Shift+X = strikethrough
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "x") {
+        e.preventDefault();
+        document.execCommand("strikeThrough");
+        onNoteBodyInput();
+      }
+      // Ctrl+K = insert link
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        insertLink();
+      }
+    });
   }
 }
 
@@ -916,15 +963,92 @@ function updateNoteField(field, value) {
   note[field] = value;
   
   if (field === "title") {
-    // Update sidebar label directly via DOM
     const items = document.querySelectorAll("[data-note-id='" + note.id + "'] .ns-item-label");
     items.forEach(el => { el.textContent = value || "Untitled"; });
-    // Save title via JSONP (small, fast)
     saveNoteTitleDebounced(note.id);
   } else if (field === "content") {
-    // Save content via hidden form POST (handles large text)
     saveNoteContentDebounced(note.id);
   }
+}
+
+// Called from contenteditable div's oninput — saves innerHTML (rich text)
+function onNoteBodyInput() {
+  const body = document.getElementById("noteBody");
+  if (!body) return;
+  const note = getActiveNote();
+  if (!note) return;
+  note.content = body.innerHTML;
+  lastLocalContentHash = simpleHash(body.innerHTML);
+  saveNoteContentDebounced(note.id);
+}
+
+function insertLink() {
+  const url = prompt("Enter URL:");
+  if (!url) return;
+  const body = document.getElementById("noteBody");
+  if (body) body.focus();
+  document.execCommand("createLink", false, url);
+  // Make links open in new tab
+  setTimeout(() => {
+    const links = document.getElementById("noteBody").querySelectorAll("a");
+    links.forEach(a => { a.setAttribute("target", "_blank"); a.setAttribute("rel", "noopener"); });
+    onNoteBodyInput(); // Trigger save
+  }, 50);
+}
+
+// === LIVE CONTENT POLLING (every 3 seconds for active note) ===
+let lastLocalContentHash = "";
+let livePollingInterval = null;
+
+function simpleHash(str) {
+  if (!str) return "0";
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const c = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + c;
+    hash |= 0;
+  }
+  return hash.toString();
+}
+
+function startLivePolling() {
+  if (livePollingInterval) clearInterval(livePollingInterval);
+  livePollingInterval = setInterval(async () => {
+    // Only poll if we're on notes view, have an active note, and NOT currently typing
+    if (state.view !== "notes" || !state.activePath || state.activePath.length === 0) return;
+    const body = document.getElementById("noteBody");
+    const isTyping = body && document.activeElement === body;
+    if (isTyping) return; // Don't poll while typing
+    
+    // Check if we have pending saves
+    const activeId = state.activePath[state.activePath.length - 1];
+    if (contentSaveTimers[activeId]) return; // Don't poll while save is pending
+    
+    // Fetch latest content from Google Doc
+    const result = await apiCall("action=getNoteContent&noteId=" + activeId);
+    if (result.error || result.content === undefined) return;
+    
+    // Compare with local — only update if server has different content
+    const serverHash = simpleHash(result.content);
+    const localHash = lastLocalContentHash || simpleHash(body ? body.innerHTML : "");
+    
+    if (serverHash !== localHash) {
+      // Server has newer content — update local
+      const note = state.notesFlat.find(n => n.id === activeId);
+      if (note) {
+        note.content = result.content;
+        lastLocalContentHash = serverHash;
+        // Update the editor directly without full re-render (preserves cursor)
+        if (body && document.activeElement !== body) {
+          body.innerHTML = result.content;
+        }
+      }
+    }
+  }, 3000);
+}
+
+function stopLivePolling() {
+  if (livePollingInterval) { clearInterval(livePollingInterval); livePollingInterval = null; }
 }
 
 // === URL HASH ROUTING ===
@@ -960,15 +1084,18 @@ function navigateToNote(pathArr) {
   state.activePath = pathArr;
   state.view = "notes";
   state.sidebarOpen = false;
+  lastLocalContentHash = "";
   updateHash();
   render();
-  // Load content for the selected note if not already loaded
   if (pathArr && pathArr.length > 0) {
     const noteId = pathArr[pathArr.length - 1];
     const note = state.notesFlat.find(n => n.id === noteId);
     if (note && note.content === undefined) {
       loadNoteContent(noteId);
+    } else if (note) {
+      lastLocalContentHash = simpleHash(note.content || "");
     }
+    startLivePolling();
   }
 }
 
@@ -989,27 +1116,25 @@ async function init() {
   await loadAll();
   readHash();
   
-  // If hash pointed to notes, lazy-load notes structure + content
   if (state.view === "notes") {
     await loadNotesLite();
     if (state.activePath && state.activePath.length > 0) {
       const noteId = state.activePath[state.activePath.length - 1];
       await loadNoteContent(noteId);
+      startLivePolling();
     }
   }
   
   render();
   
-  // Poll for changes every 10 seconds
+  // Background sync for tasks/structure every 15 seconds (not note content — that's handled by live polling)
   setInterval(() => {
     const body = document.getElementById("noteBody");
     const isTyping = body && document.activeElement === body;
-    const titleInput = document.getElementById("noteTitleInput");
-    const isTypingTitle = titleInput && document.activeElement === titleInput;
-    if (!isTyping && !isTypingTitle) {
+    if (!isTyping) {
       bgSync();
     }
-  }, 10000);
+  }, 15000);
 }
 init();
 </script>
