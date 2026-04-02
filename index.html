@@ -139,6 +139,11 @@ body { background: var(--bg); color: var(--text); font-family: var(--serif); min
 .ns-item-arrow.open { transform:rotate(90deg); }
 .ns-item-actions { display:flex; gap:2px; opacity:0; transition:opacity 0.15s; }
 .ns-item:hover .ns-item-actions { opacity:1; }
+.ns-item[draggable="true"] { cursor:grab; }
+.ns-item[draggable="true"]:active { cursor:grabbing; }
+.ns-item.drop-above { border-top:2px solid var(--amber) !important; }
+.ns-item.drop-below { border-bottom:2px solid var(--amber) !important; }
+.ns-item.drop-into { background:var(--amber) !important; color:var(--bg) !important; opacity:0.3; }
 .ns-act-btn { background:transparent; border:none; color:var(--dim); font-size:11px; cursor:pointer; padding:2px 4px; }
 .ns-act-btn:hover { color:var(--text); }
 .ns-link-btn { background:transparent; border:none; color:var(--dim3); font-size:10px; cursor:pointer; padding:2px 4px; }
@@ -544,7 +549,10 @@ function addNoteToList(parentPath) {
   const id = "n_" + Date.now();
   const parentId = parentPath && parentPath.length > 0 ? parentPath[parentPath.length - 1] : "";
   const siblings = getChildren(parentId);
-  const sortOrder = siblings.length;
+  
+  // Shift all siblings' sort order up by 1 to make room at top
+  siblings.forEach(s => { s.sortOrder = (s.sortOrder || 0) + 1; });
+  const sortOrder = 0; // New note goes to top
   
   state.notesFlat.push({ id, parentId, title: "Untitled", content: "", sortOrder, createdAt: new Date().toISOString() });
   state.activePath = parentPath ? [...parentPath, id] : [id];
@@ -553,8 +561,10 @@ function addNoteToList(parentPath) {
   if (parentId) expandedNodes[parentId] = true;
   
   render();
-  // Save immediately (not debounced — it's a new note)
+  // Save new note + reorder siblings
   apiPost({ action: "saveNote", note: { id, parentId, title: "Untitled", content: "", sortOrder } });
+  const reorderUpdates = siblings.map(s => ({ id: s.id, sortOrder: s.sortOrder }));
+  if (reorderUpdates.length > 0) apiPost({ action: "reorderNotes", updates: reorderUpdates });
   setTimeout(() => { const el = document.getElementById("noteTitleInput"); if (el) { el.focus(); el.select(); } }, 50);
 }
 
@@ -598,26 +608,148 @@ function collectDescendants(id) {
   return result;
 }
 
-function moveNoteInList(path, dir) {
+function moveNoteToTop(path) {
   if (!path || path.length === 0) return;
   const id = path[path.length - 1];
   const note = findNoteFlat(id);
   if (!note) return;
-  
   const siblings = getChildren(note.parentId || "");
-  const idx = siblings.findIndex(n => n.id === id);
-  const newIdx = idx + dir;
-  if (newIdx < 0 || newIdx >= siblings.length) return;
+  // Set this note to -1, then renumber all
+  note.sortOrder = -1;
+  let order = 0;
+  siblings.sort((a,b) => (a.sortOrder||0) - (b.sortOrder||0)).forEach(s => { s.sortOrder = order++; });
+  render();
+  const updates = siblings.map(s => ({ id: s.id, sortOrder: s.sortOrder }));
+  apiPost({ action: "reorderNotes", updates });
+}
+
+function moveNoteToBottom(path) {
+  if (!path || path.length === 0) return;
+  const id = path[path.length - 1];
+  const note = findNoteFlat(id);
+  if (!note) return;
+  const siblings = getChildren(note.parentId || "");
+  note.sortOrder = 99999;
+  let order = 0;
+  siblings.sort((a,b) => (a.sortOrder||0) - (b.sortOrder||0)).forEach(s => { s.sortOrder = order++; });
+  render();
+  const updates = siblings.map(s => ({ id: s.id, sortOrder: s.sortOrder }));
+  apiPost({ action: "reorderNotes", updates });
+}
+
+// === DRAG AND DROP ===
+let dragNoteId = null;
+let dragNoteParentId = null;
+
+function onDragStart(e, noteId, parentId) {
+  dragNoteId = noteId;
+  dragNoteParentId = parentId;
+  e.dataTransfer.effectAllowed = "move";
+  e.dataTransfer.setData("text/plain", noteId);
+  e.target.closest(".ns-item").style.opacity = "0.4";
+}
+
+function onDragEnd(e) {
+  e.target.closest(".ns-item").style.opacity = "1";
+  dragNoteId = null;
+  dragNoteParentId = null;
+  // Remove all drop indicators
+  document.querySelectorAll(".drop-above,.drop-below,.drop-into").forEach(el => {
+    el.classList.remove("drop-above","drop-below","drop-into");
+  });
+}
+
+function onDragOver(e, targetId, targetParentId) {
+  e.preventDefault();
+  if (targetId === dragNoteId) return;
+  e.dataTransfer.dropEffect = "move";
   
-  // Swap sort orders
-  const other = siblings[newIdx];
-  const tempSort = note.sortOrder;
-  note.sortOrder = other.sortOrder;
-  other.sortOrder = tempSort;
+  const item = e.target.closest(".ns-item");
+  if (!item) return;
+  
+  // Remove old indicators
+  document.querySelectorAll(".drop-above,.drop-below,.drop-into").forEach(el => {
+    el.classList.remove("drop-above","drop-below","drop-into");
+  });
+  
+  const rect = item.getBoundingClientRect();
+  const y = e.clientY - rect.top;
+  const third = rect.height / 3;
+  
+  if (y < third) {
+    item.classList.add("drop-above");
+  } else if (y > third * 2) {
+    item.classList.add("drop-below");
+  } else {
+    item.classList.add("drop-into"); // Drop as child
+  }
+}
+
+function onDrop(e, targetId, targetParentId) {
+  e.preventDefault();
+  if (!dragNoteId || targetId === dragNoteId) return;
+  
+  const item = e.target.closest(".ns-item");
+  if (!item) return;
+  
+  const rect = item.getBoundingClientRect();
+  const y = e.clientY - rect.top;
+  const third = rect.height / 3;
+  
+  const dragNote = findNoteFlat(dragNoteId);
+  if (!dragNote) return;
+  
+  // Prevent dropping a parent into its own child
+  const descendants = collectDescendants(dragNoteId);
+  if (descendants.includes(targetId)) return;
+  
+  if (y < third) {
+    // Drop ABOVE target — same parent as target, sort order just before target
+    const targetNote = findNoteFlat(targetId);
+    dragNote.parentId = targetNote.parentId || "";
+    const siblings = getChildren(dragNote.parentId);
+    const targetIdx = siblings.findIndex(n => n.id === targetId);
+    dragNote.sortOrder = (targetNote.sortOrder || 0) - 0.5;
+  } else if (y > third * 2) {
+    // Drop BELOW target — same parent as target, sort order just after target
+    const targetNote = findNoteFlat(targetId);
+    dragNote.parentId = targetNote.parentId || "";
+    dragNote.sortOrder = (targetNote.sortOrder || 0) + 0.5;
+  } else {
+    // Drop INTO target — becomes child of target
+    dragNote.parentId = targetId;
+    const children = getChildren(targetId);
+    dragNote.sortOrder = children.length;
+    expandedNodes[targetId] = true;
+  }
+  
+  // Renumber all siblings in the new parent
+  const newSiblings = getChildren(dragNote.parentId);
+  newSiblings.sort((a,b) => (a.sortOrder||0) - (b.sortOrder||0));
+  newSiblings.forEach((s, i) => { s.sortOrder = i; });
+  
+  // Also renumber old parent's children
+  if (dragNoteParentId !== dragNote.parentId) {
+    const oldSiblings = getChildren(dragNoteParentId || "");
+    oldSiblings.sort((a,b) => (a.sortOrder||0) - (b.sortOrder||0));
+    oldSiblings.forEach((s, i) => { s.sortOrder = i; });
+  }
+  
+  // Remove indicators
+  document.querySelectorAll(".drop-above,.drop-below,.drop-into").forEach(el => {
+    el.classList.remove("drop-above","drop-below","drop-into");
+  });
   
   render();
-  // Save both reordered notes
-  apiPost({ action: "reorderNotes", updates: [{ id: note.id, sortOrder: note.sortOrder }, { id: other.id, sortOrder: other.sortOrder }] });
+  
+  // Save the moved note (new parent + sort order) and reorder siblings
+  apiPost({ action: "saveNote", note: { id: dragNote.id, parentId: dragNote.parentId, title: dragNote.title, sortOrder: dragNote.sortOrder } });
+  const allUpdates = [...getChildren(dragNote.parentId)];
+  if (dragNoteParentId !== dragNote.parentId) allUpdates.push(...getChildren(dragNoteParentId || ""));
+  apiPost({ action: "reorderNotes", updates: allUpdates.map(n => ({ id: n.id, sortOrder: n.sortOrder })) });
+  
+  dragNoteId = null;
+  dragNoteParentId = null;
 }
 
 // Expanded nodes tracker
@@ -883,10 +1015,28 @@ function renderNotes(app) {
     if (!body.innerText.trim()) body.classList.add("empty-placeholder");
     body.addEventListener("focus", () => body.classList.remove("empty-placeholder"));
     body.addEventListener("blur", () => { if (!body.innerText.trim()) body.classList.add("empty-placeholder"); });
-    // Make links clickable with Ctrl/Cmd+click
+    // Make links clickable — tap/click opens the link
     body.addEventListener("click", (e) => {
-      if (e.target.tagName === "A" && (e.ctrlKey || e.metaKey)) {
-        window.open(e.target.href, "_blank");
+      const link = e.target.closest("a");
+      if (link && link.href) {
+        // On mobile, first tap selects, second tap should open
+        // Give a brief window to detect double-tap
+        if (link.dataset.tapped) {
+          e.preventDefault();
+          e.stopPropagation();
+          window.open(link.href, "_blank");
+          link.dataset.tapped = "";
+          return;
+        }
+        link.dataset.tapped = "1";
+        setTimeout(() => { link.dataset.tapped = ""; }, 600);
+      }
+    });
+    // Ctrl/Cmd+click always opens link immediately (desktop)
+    body.addEventListener("mousedown", (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.target.closest("a")) {
+        e.preventDefault();
+        window.open(e.target.closest("a").href, "_blank");
       }
     });
     // Keyboard shortcuts
@@ -926,7 +1076,7 @@ function renderNoteTreeHTML(list, parentPath, depth) {
     const hasChildren = note.children && note.children.length > 0;
     const isExpanded = expandedNodes[note.id];
 
-    html += `<div class="ns-item ${isActive?"active":""}" data-note-id="${note.id}" style="padding-left:${12+indent}px" onclick="navByPath('${pathStr}')">`;
+    html += `<div class="ns-item ${isActive?"active":""}" data-note-id="${note.id}" style="padding-left:${12+indent}px" onclick="navByPath('${pathStr}')" draggable="true" ondragstart="onDragStart(event,'${note.id}','${note.parentId||""}')" ondragend="onDragEnd(event)" ondragover="onDragOver(event,'${note.id}','${note.parentId||""}')" ondrop="onDrop(event,'${note.id}','${note.parentId||""}')">`;
 
     // Expand arrow
     if (hasChildren) {
@@ -939,7 +1089,7 @@ function renderNoteTreeHTML(list, parentPath, depth) {
 
     html += '<div class="ns-item-actions">';
     html += `<button class="ns-link-btn" onclick="event.stopPropagation();copyLinkByPath('${pathStr}',this)" title="Copy link">🔗</button>`;
-    html += `<div class="ns-move-btns"><button class="ns-move-btn" onclick="event.stopPropagation();moveNoteInList(pathFromStr('${pathStr}'),-1)">▲</button><button class="ns-move-btn" onclick="event.stopPropagation();moveNoteInList(pathFromStr('${pathStr}'),1)">▼</button></div>`;
+    html += `<div class="ns-move-btns"><button class="ns-move-btn" onclick="event.stopPropagation();moveNoteToTop(pathFromStr('${pathStr}'))" title="Move to top">⤒</button><button class="ns-move-btn" onclick="event.stopPropagation();moveNoteToBottom(pathFromStr('${pathStr}'))" title="Move to bottom">⤓</button></div>`;
     html += `<button class="ns-act-btn" onclick="event.stopPropagation();confirmDeleteNote('${pathStr}')" title="Delete">✕</button>`;
     html += '</div></div>';
 
@@ -983,16 +1133,44 @@ function onNoteBodyInput() {
 }
 
 function insertLink() {
-  const url = prompt("Enter URL:");
-  if (!url) return;
   const body = document.getElementById("noteBody");
-  if (body) body.focus();
-  document.execCommand("createLink", false, url);
-  // Make links open in new tab
+  if (!body) return;
+  
+  // Save current selection range before prompt steals focus
+  const sel = window.getSelection();
+  let savedRange = null;
+  let hasSelection = false;
+  if (sel && sel.rangeCount > 0) {
+    savedRange = sel.getRangeAt(0).cloneRange();
+    hasSelection = !sel.isCollapsed;
+  }
+  
+  const url = prompt("Enter URL:", "https://");
+  if (!url || url === "https://") return;
+  
+  // Restore focus and selection
+  body.focus();
+  if (savedRange) {
+    sel.removeAllRanges();
+    sel.addRange(savedRange);
+  }
+  
+  if (hasSelection) {
+    document.execCommand("createLink", false, url);
+  } else {
+    // No selection — insert URL as link text
+    document.execCommand("insertHTML", false, `<a href="${url}" target="_blank" rel="noopener" contenteditable="false">${esc(url)}</a>&nbsp;`);
+  }
+  
+  // Ensure all links have proper attributes
   setTimeout(() => {
-    const links = document.getElementById("noteBody").querySelectorAll("a");
-    links.forEach(a => { a.setAttribute("target", "_blank"); a.setAttribute("rel", "noopener"); });
-    onNoteBodyInput(); // Trigger save
+    const links = body.querySelectorAll("a");
+    links.forEach(a => {
+      a.setAttribute("target", "_blank");
+      a.setAttribute("rel", "noopener");
+      a.setAttribute("contenteditable", "false");
+    });
+    onNoteBodyInput();
   }, 50);
 }
 
