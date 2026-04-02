@@ -157,11 +157,12 @@ body { background: var(--bg); color: var(--text); font-family: var(--serif); min
 .note-title-input { background:transparent; border:none; color:var(--text3); font-size:22px; font-family:var(--serif); padding:4px 0; margin-bottom:12px; outline:none; border-bottom:1px solid var(--border); }
 
 /* Formatting toolbar */
-.note-toolbar { display:flex; gap:2px; padding:4px 0; margin-bottom:12px; border-bottom:1px solid var(--border); flex-wrap:wrap; }
+.note-toolbar { display:flex; gap:2px; padding:4px 0; margin-bottom:12px; border-bottom:1px solid var(--border); flex-wrap:wrap; align-items:center; }
 .note-toolbar button { background:transparent; border:1px solid transparent; color:var(--dim); padding:4px 8px; border-radius:4px; font-size:13px; cursor:pointer; font-family:var(--mono); transition:all 0.1s; min-width:30px; text-align:center; }
 .note-toolbar button:hover { background:var(--bg3); color:var(--text); border-color:var(--border); }
 .note-toolbar button.active { background:var(--bg3); color:var(--amber); border-color:var(--border2); }
-.note-toolbar .tb-sep { width:1px; background:var(--border); margin:2px 4px; }
+.note-toolbar .tb-sep { width:1px; background:var(--border); margin:2px 4px; align-self:stretch; }
+.tb-select { background:var(--bg); border:1px solid var(--border); color:var(--text); padding:3px 6px; border-radius:4px; font-size:11px; font-family:var(--mono); cursor:pointer; max-width:110px; }
 
 .note-body { width:100%; background:transparent; border:none; color:var(--text); font-size:16px; font-family:var(--serif); padding:0; outline:none; resize:none; min-height:200px; line-height:1.7; overflow:hidden; white-space:pre-wrap; word-wrap:break-word; }
 .note-body.empty-placeholder:before { content:attr(data-placeholder); color:var(--dim3); pointer-events:none; }
@@ -1049,12 +1050,30 @@ function renderNotes(app) {
     
     // Formatting toolbar
     html += '<div class="note-toolbar">';
+    // Font family
+    html += '<select class="tb-select" onchange="document.execCommand(\'fontName\',false,this.value);document.getElementById(\'noteBody\').focus()" title="Font">';
+    html += '<option value="EB Garamond, Georgia, serif">Garamond</option>';
+    html += '<option value="Georgia, serif">Georgia</option>';
+    html += '<option value="Times New Roman, serif">Times New Roman</option>';
+    html += '<option value="Arial, sans-serif">Arial</option>';
+    html += '<option value="Courier New, monospace">Courier New</option>';
+    html += '</select>';
+    // Font size
+    html += '<select class="tb-select" onchange="document.execCommand(\'fontSize\',false,this.value);document.getElementById(\'noteBody\').focus()" title="Font Size">';
+    html += '<option value="2">Small</option>';
+    html += '<option value="3" selected>Normal</option>';
+    html += '<option value="4">Medium</option>';
+    html += '<option value="5">Large</option>';
+    html += '<option value="6">X-Large</option>';
+    html += '</select>';
+    html += '<div class="tb-sep"></div>';
     html += '<button onmousedown="event.preventDefault();document.execCommand(\'bold\')" title="Bold (Ctrl+B)"><b>B</b></button>';
     html += '<button onmousedown="event.preventDefault();document.execCommand(\'italic\')" title="Italic (Ctrl+I)"><i>I</i></button>';
     html += '<button onmousedown="event.preventDefault();document.execCommand(\'underline\')" title="Underline (Ctrl+U)"><u>U</u></button>';
-    html += '<button onmousedown="event.preventDefault();document.execCommand(\'strikeThrough\')" title="Strikethrough"><s>S</s></button>';
+    html += '<button onmousedown="event.preventDefault();document.execCommand(\'strikeThrough\')" title="Strikethrough (Ctrl+Shift+X)"><s>S</s></button>';
     html += '<div class="tb-sep"></div>';
-    html += '<button onmousedown="event.preventDefault();insertLink()" title="Insert Link">🔗</button>';
+    html += '<button onmousedown="event.preventDefault();insertLink()" title="Insert Link (Ctrl+K)">🔗</button>';
+    html += '<button onmousedown="event.preventDefault();document.execCommand(\'removeFormat\')" title="Remove Formatting">✕</button>';
     html += '</div>';
     
     if (activeNote.content === undefined) {
@@ -1104,7 +1123,7 @@ function renderNotes(app) {
       // Tab = insert 5 spaces
       if (e.key === "Tab") {
         e.preventDefault();
-        document.execCommand("insertText", false, "     ");
+        document.execCommand("insertText", false, "      ");
         onNoteBodyInput();
       }
       // Ctrl+Shift+X = strikethrough
