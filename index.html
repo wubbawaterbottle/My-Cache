@@ -1043,10 +1043,8 @@ function renderNotes(app) {
   html += '<div class="notes-main">';
   const activeNote = getActiveNote();
   if (activeNote) {
-    html += '<div class="note-sub-header">';
-    html += `<button class="note-sub-add" onclick="addNoteToList(pathFromStr('${state.activePath.join("|")}'))">+ Sub-note</button>`;
     html += '</div>';
-    html += `<input class="note-title-input" id="noteTitleInput" value="${esc(activeNote.title)}" oninput="updateNoteField('title',this.value)" placeholder="Note title">`;
+    html += `<input class="note-title-input" id="noteTitleInput" value="${esc(activeNote.title)}" oninput="updateNoteField('title',this.value)" onkeydown="if(event.key==='Tab'){event.preventDefault();var b=document.getElementById('noteBody');if(b)b.focus();}" placeholder="Note title">`;
     
     // Formatting toolbar
     html += '<div class="note-toolbar">';
@@ -1123,7 +1121,7 @@ function renderNotes(app) {
       // Tab = insert 5 spaces
       if (e.key === "Tab") {
         e.preventDefault();
-        document.execCommand("insertText", false, "      ");
+        document.execCommand("insertHTML", false, "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;");
         onNoteBodyInput();
       }
       // Ctrl+Shift+X = strikethrough
@@ -1167,6 +1165,7 @@ function renderNoteTreeHTML(list, parentPath, depth) {
     html += `<span class="ns-item-label">${esc(note.title)}</span>`;
 
     html += '<div class="ns-item-actions">';
+    html += `<button class="ns-act-btn" onclick="event.stopPropagation();addNoteToList(pathFromStr('${pathStr}'))" title="Add sub-note">+</button>`;
     html += `<button class="ns-link-btn" onclick="event.stopPropagation();copyLinkByPath('${pathStr}',this)" title="Copy link">🔗</button>`;
     html += `<div class="ns-move-btns"><button class="ns-move-btn" onclick="event.stopPropagation();moveNoteToTop(pathFromStr('${pathStr}'))" title="Move to top">⤒</button><button class="ns-move-btn" onclick="event.stopPropagation();moveNoteToBottom(pathFromStr('${pathStr}'))" title="Move to bottom">⤓</button></div>`;
     html += `<button class="ns-act-btn" onclick="event.stopPropagation();confirmDeleteNote('${pathStr}')" title="Delete">✕</button>`;
