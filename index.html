@@ -131,13 +131,13 @@ body { background: var(--bg); color: var(--text); font-family: var(--serif); min
 .ns-title { font-size:12px; color:var(--dim); font-family:var(--mono); text-transform:uppercase; letter-spacing:2px; }
 .ns-add { background:transparent; border:none; color:var(--amber); font-size:18px; cursor:pointer; padding:2px 6px; }
 
-.ns-item { display:flex; align-items:center; padding:8px 12px; cursor:pointer; transition:background 0.1s; gap:6px; font-size:13px; color:var(--dim2); border-left:2px solid transparent; }
+.ns-item { display:flex; align-items:center; padding:8px 12px; cursor:pointer; transition:background 0.1s; gap:4px; font-size:13px; color:var(--dim2); border-left:2px solid transparent; min-height:32px; }
 .ns-item:hover { background:var(--bg3); }
 .ns-item.active { background:var(--bg3); color:var(--text); border-left-color:var(--amber); }
-.ns-item-label { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.ns-item-arrow { font-size:10px; color:var(--dim3); transition:transform 0.15s; }
+.ns-item-label { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; }
+.ns-item-arrow { font-size:10px; color:var(--dim3); transition:transform 0.15s; flex-shrink:0; }
 .ns-item-arrow.open { transform:rotate(90deg); }
-.ns-item-actions { display:flex; gap:2px; opacity:0; transition:opacity 0.15s; }
+.ns-item-actions { display:flex; gap:2px; opacity:0; transition:opacity 0.15s; flex-shrink:0; }
 .ns-item:hover .ns-item-actions { opacity:1; }
 .ns-item[draggable="true"] { cursor:grab; }
 .ns-item[draggable="true"]:active { cursor:grabbing; }
@@ -163,6 +163,23 @@ body { background: var(--bg); color: var(--text); font-family: var(--serif); min
 .note-toolbar button.active { background:var(--bg3); color:var(--amber); border-color:var(--border2); }
 .note-toolbar .tb-sep { width:1px; background:var(--border); margin:2px 4px; align-self:stretch; }
 .tb-select { background:var(--bg); border:1px solid var(--border); color:var(--text); padding:3px 6px; border-radius:4px; font-size:11px; font-family:var(--mono); cursor:pointer; max-width:110px; }
+/* Screenplay mode indicator */
+.sp-indicator { display:inline-flex; align-items:center; gap:4px; font-size:10px; font-family:var(--mono); color:var(--amber); padding:0 6px; }
+.sp-current-mode { font-size:10px; font-family:var(--mono); color:var(--dim); padding:2px 6px; background:var(--bg3); border-radius:3px; }
+
+/* Screenplay toolbar */
+.sp-toolbar { gap:4px; padding:2px 0 !important; }
+.sp-btn { font-size:10px !important; padding:3px 8px !important; letter-spacing:0.3px; }
+.sp-btn.sp-active { background:var(--amber) !important; color:var(--bg) !important; border-color:var(--amber) !important; }
+
+/* Screenplay mode — Courier New 12pt, proper margins */
+.note-body.sp-mode { font-family:"Courier New", Courier, monospace !important; font-size:12pt !important; line-height:1.0 !important; max-width:640px; }
+.note-body.sp-mode .sp-action { display:block; text-align:left; margin:12px 0; padding-left:0 !important; padding-right:0 !important; }
+.note-body.sp-mode .sp-character { display:block; text-align:left; text-transform:uppercase; margin:12px 0 0 0; padding-left:180px; padding-right:0; }
+.note-body.sp-mode .sp-dialogue { display:block; margin:0 0 12px 0; padding-left:100px; padding-right:100px; }
+.note-body.sp-mode .sp-paren { display:block; margin:0; padding-left:130px; padding-right:130px; font-style:italic; }
+.note-body.sp-mode .sp-center { display:block; text-align:center; margin:12px 0; padding-left:0; padding-right:0; }
+.note-body.sp-mode .sp-transition { display:block; text-align:right; text-transform:uppercase; margin:12px 0; padding-left:0; padding-right:0; }
 
 .note-body { width:100%; background:transparent; border:none; color:var(--text); font-size:16px; font-family:var(--serif); padding:0; outline:none; resize:none; min-height:200px; line-height:1.7; overflow:hidden; white-space:pre-wrap; word-wrap:break-word; tab-size:6; -moz-tab-size:6; }
 .note-body.empty-placeholder:before { content:attr(data-placeholder); color:var(--dim3); pointer-events:none; }
@@ -224,7 +241,7 @@ let state = {
   saveStatus:"", loaded:false, error:null,
   // Notes (flat array from Sheet — each note is {id, parentId, title, content, sortOrder, createdAt})
   notesFlat:[], activePath:null, confirmDeletePath:null, sidebarOpen:false,
-  noteSaveTimers:{}, notesLiteLoaded:false, isLoading:false,
+  noteSaveTimers:{}, notesLiteLoaded:false, isLoading:false, screenplayMode:false, spCurrentFormat:"action",
 };
 
 // === JSONP API ===
@@ -460,7 +477,7 @@ function saveNoteTitleDebounced(noteId) {
     if (creatingNotes[noteId]) return; // Double-check
     const note = state.notesFlat.find(n => n.id === noteId);
     if (note) {
-      const result = await apiPost({ action: "saveNote", note: { id: note.id, parentId: note.parentId, title: note.title, sortOrder: note.sortOrder } });
+      const result = await apiPost({ action: "saveNote", note: { id: note.id, parentId: note.parentId, title: note.title, sortOrder: note.sortOrder, mode: note.mode || "" } });
       if (result && !result.error) { setSaveDot("#5a7a4a"); hideSaveDot(); }
       else { setSaveDot("#b04040"); }
     }
@@ -1045,9 +1062,8 @@ function renderNotes(app) {
   if (activeNote) {
     html += `<input class="note-title-input" id="noteTitleInput" value="${esc(activeNote.title)}" oninput="updateNoteField('title',this.value)" onkeydown="if(event.key==='Tab'){event.preventDefault();var b=document.getElementById('noteBody');if(b)b.focus();}" placeholder="Note title">`;
     
-    // Formatting toolbar
+    // Single unified toolbar — always visible
     html += '<div class="note-toolbar">';
-    // Font family
     html += '<select class="tb-select" onchange="document.execCommand(\'fontName\',false,this.value);document.getElementById(\'noteBody\').focus()" title="Font">';
     html += '<option value="EB Garamond, Georgia, serif">Garamond</option>';
     html += '<option value="Georgia, serif">Georgia</option>';
@@ -1055,7 +1071,6 @@ function renderNotes(app) {
     html += '<option value="Arial, sans-serif">Arial</option>';
     html += '<option value="Courier New, monospace">Courier New</option>';
     html += '</select>';
-    // Font size
     html += '<select class="tb-select" onchange="document.execCommand(\'fontSize\',false,this.value);document.getElementById(\'noteBody\').focus()" title="Font Size">';
     html += '<option value="2">Small</option>';
     html += '<option value="3" selected>Normal</option>';
@@ -1067,17 +1082,32 @@ function renderNotes(app) {
     html += '<button onmousedown="event.preventDefault();document.execCommand(\'bold\')" title="Bold (Ctrl+B)"><b>B</b></button>';
     html += '<button onmousedown="event.preventDefault();document.execCommand(\'italic\')" title="Italic (Ctrl+I)"><i>I</i></button>';
     html += '<button onmousedown="event.preventDefault();document.execCommand(\'underline\')" title="Underline (Ctrl+U)"><u>U</u></button>';
-    html += '<button onmousedown="event.preventDefault();document.execCommand(\'strikeThrough\')" title="Strikethrough (Ctrl+Shift+X)"><s>S</s></button>';
+    html += '<button onmousedown="event.preventDefault();document.execCommand(\'strikeThrough\')" title="Strikethrough"><s>S</s></button>';
     html += '<div class="tb-sep"></div>';
     html += '<button onmousedown="event.preventDefault();insertLink()" title="Insert Link (Ctrl+K)">🔗</button>';
+    // Screenplay toggle — camera emoji
+    html += `<button onmousedown="event.preventDefault();toggleScreenplay()" title="Toggle Screenplay Mode" style="${state.screenplayMode?"background:var(--amber);color:var(--bg);border-color:var(--amber);":""}">🎥</button>`;
     html += '<button onmousedown="event.preventDefault();document.execCommand(\'removeFormat\')" title="Remove Formatting">✕</button>';
     html += '</div>';
+    
+    // Screenplay element bar — only shows when screenplay mode is on
+    if (state.screenplayMode) {
+      html += '<div class="note-toolbar sp-toolbar">';
+      html += `<button onmousedown="event.preventDefault();spFormat('action')" class="sp-btn ${state.spCurrentFormat==='action'?'sp-active':''}">Action</button>`;
+      html += `<button onmousedown="event.preventDefault();spFormat('character')" class="sp-btn ${state.spCurrentFormat==='character'?'sp-active':''}">Name</button>`;
+      html += `<button onmousedown="event.preventDefault();spFormat('dialogue')" class="sp-btn ${state.spCurrentFormat==='dialogue'?'sp-active':''}">Dialogue</button>`;
+      html += `<button onmousedown="event.preventDefault();spFormatParen()" class="sp-btn ${state.spCurrentFormat==='paren'?'sp-active':''}">Paren.</button>`;
+      html += `<button onmousedown="event.preventDefault();spFormat('center')" class="sp-btn ${state.spCurrentFormat==='center'?'sp-active':''}">Center</button>`;
+      html += `<button onmousedown="event.preventDefault();spFormat('transition')" class="sp-btn ${state.spCurrentFormat==='transition'?'sp-active':''}">Transition</button>`;
+      html += `<span class="sp-current-mode">${state.spCurrentFormat}</span>`;
+      html += '</div>';
+    }
     
     if (activeNote.content === undefined) {
       html += '<div style="color:var(--dim);font-size:14px;padding:20px 0;">Loading note...</div>';
     } else {
-      // Render content as HTML (rich text)
-      html += `<div class="note-body" id="noteBody" contenteditable="true" oninput="onNoteBodyInput()" data-placeholder="Start writing...">${activeNote.content||""}</div>`;
+      const spClass = state.screenplayMode ? " sp-mode" : "";
+      html += `<div class="note-body${spClass}" id="noteBody" contenteditable="true" oninput="onNoteBodyInput()" data-placeholder="${state.screenplayMode?"INT. LOCATION - DAY":"Start writing..."}">${activeNote.content||""}</div>`;
     }
   } else {
     html += '<div class="note-empty">Select a note or click + to create one</div>';
@@ -1117,10 +1147,10 @@ function renderNotes(app) {
     });
     // Keyboard shortcuts
     body.addEventListener("keydown", (e) => {
-      // Tab = insert 6-space indent
-      if (e.key === "Tab") {
+      // Tab — in screenplay mode, cycles formats. Otherwise, insert indent.
+      if (e.key === "Tab" && !state.screenplayMode) {
         e.preventDefault();
-        document.execCommand("insertHTML", false, '<span style="white-space:pre">\t</span>');
+        document.execCommand("insertHTML", false, '<span style="display:inline-block;width:3.6em;"></span>');
         onNoteBodyInput();
       }
       // Ctrl+Shift+X = strikethrough
@@ -1213,7 +1243,6 @@ function insertLink() {
   const body = document.getElementById("noteBody");
   if (!body) return;
   
-  // Save current selection range before prompt steals focus
   const sel = window.getSelection();
   let savedRange = null;
   let hasSelection = false;
@@ -1225,7 +1254,6 @@ function insertLink() {
   const url = prompt("Enter URL:", "https://");
   if (!url || url === "https://") return;
   
-  // Restore focus and selection
   body.focus();
   if (savedRange) {
     sel.removeAllRanges();
@@ -1235,11 +1263,9 @@ function insertLink() {
   if (hasSelection) {
     document.execCommand("createLink", false, url);
   } else {
-    // No selection — insert URL as link text
     document.execCommand("insertHTML", false, `<a href="${url}" target="_blank" rel="noopener" contenteditable="false">${esc(url)}</a>&nbsp;`);
   }
   
-  // Ensure all links have proper attributes
   setTimeout(() => {
     const links = body.querySelectorAll("a");
     links.forEach(a => {
@@ -1249,6 +1275,284 @@ function insertLink() {
     });
     onNoteBodyInput();
   }, 50);
+}
+
+// === SCREENPLAY MODE ===
+const SP_FORMATS = ["action", "character", "dialogue", "paren", "center", "transition"];
+
+function toggleScreenplay() {
+  state.screenplayMode = !state.screenplayMode;
+  state.spCurrentFormat = "action";
+  
+  // Save the mode to the note so it persists across devices/reloads
+  const note = getActiveNote();
+  if (note) {
+    note.mode = state.screenplayMode ? "screenplay" : "";
+    saveNoteTitleDebounced(note.id); // This saves metadata including mode
+  }
+  
+  render(true);
+  const body = document.getElementById("noteBody");
+  if (body) body.focus();
+}
+
+// Parenthetical — special: creates () and places cursor inside
+function spFormatParen() {
+  state.spCurrentFormat = "paren";
+  const body = document.getElementById("noteBody");
+  if (!body) return;
+  body.focus();
+  
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0) return;
+  
+  const node = sel.anchorNode;
+  const parentEl = node.nodeType === 3 ? node.parentElement : node;
+  let topEl = parentEl;
+  while (topEl && topEl.parentElement !== body) {
+    topEl = topEl.parentElement;
+  }
+  
+  // If current line is empty, transform it into a paren line
+  if (topEl && topEl.parentElement === body && topEl.textContent.trim() === "") {
+    topEl.className = "sp-paren";
+    topEl.innerHTML = "()";
+    // Place cursor between the parens
+    const textNode = topEl.firstChild;
+    const range = document.createRange();
+    range.setStart(textNode, 1); // After the (
+    range.collapse(true);
+    sel.removeAllRanges();
+    sel.addRange(range);
+  } else {
+    // Create new paren line after current
+    const newDiv = document.createElement("div");
+    newDiv.className = "sp-paren";
+    newDiv.innerHTML = "()";
+    if (topEl && topEl.parentElement === body) {
+      topEl.after(newDiv);
+    } else {
+      body.appendChild(newDiv);
+    }
+    const textNode = newDiv.firstChild;
+    const range = document.createRange();
+    range.setStart(textNode, 1);
+    range.collapse(true);
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+  
+  onNoteBodyInput();
+  spUpdateUI("paren");
+}
+
+function spFormat(type) {
+  state.spCurrentFormat = type;
+  const body = document.getElementById("noteBody");
+  if (!body) return;
+  body.focus();
+  
+  // Find the current block element the cursor is in
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0) return;
+  
+  const node = sel.anchorNode;
+  const parentEl = node.nodeType === 3 ? node.parentElement : node;
+  
+  // Walk up to find the top-level element (direct child of body)
+  let topEl = parentEl;
+  while (topEl && topEl.parentElement !== body) {
+    topEl = topEl.parentElement;
+  }
+  
+  if (topEl && topEl.parentElement === body) {
+    // If leaving paren format, strip the ( ) characters
+    if (topEl.classList.contains("sp-paren") && type !== "paren") {
+      let text = topEl.textContent;
+      // Remove leading ( and trailing )
+      text = text.replace(/^\(/, "").replace(/\)$/, "").trim();
+      topEl.textContent = text || "";
+      if (!text) topEl.innerHTML = "<br>";
+      // Reposition cursor at end
+      const range = document.createRange();
+      if (topEl.firstChild) {
+        range.setStart(topEl.firstChild, topEl.firstChild.textContent.length);
+      } else {
+        range.setStart(topEl, 0);
+      }
+      range.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }
+    // Transform the existing element — swap the class
+    topEl.className = "sp-" + type;
+  } else {
+    // No block found — create new block
+    const newDiv = document.createElement("div");
+    newDiv.className = "sp-" + type;
+    newDiv.innerHTML = "<br>";
+    body.appendChild(newDiv);
+    const range = document.createRange();
+    range.setStart(newDiv, 0);
+    range.collapse(true);
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+  
+  onNoteBodyInput();
+  spUpdateUI(type);
+}
+
+function spUpdateUI(type) {
+  document.querySelectorAll(".sp-btn").forEach(btn => btn.classList.remove("sp-active"));
+  document.querySelectorAll(".sp-btn").forEach(btn => {
+    const label = btn.textContent.toLowerCase();
+    if ((type === "character" && label === "name") || label === type) btn.classList.add("sp-active");
+  });
+  const modeLabel = document.querySelector(".sp-current-mode");
+  if (modeLabel) modeLabel.textContent = type;
+}
+
+function spCycleFormat() {
+  const idx = SP_FORMATS.indexOf(state.spCurrentFormat);
+  const next = SP_FORMATS[(idx + 1) % SP_FORMATS.length];
+  if (next === "paren") {
+    spFormatParen();
+  } else {
+    spFormat(next);
+  }
+}
+
+// Keyboard handler for screenplay mode
+document.addEventListener("keydown", function(e) {
+  if (!state.screenplayMode) return;
+  const body = document.getElementById("noteBody");
+  if (!body || document.activeElement !== body) return;
+  
+  // Tab = cycle through screenplay formats
+  if (e.key === "Tab") {
+    e.preventDefault();
+    spCycleFormat();
+    return;
+  }
+  
+  // Enter handling
+  if (e.key === "Enter") {
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0) {
+      const node = sel.anchorNode;
+      const parentEl = node.nodeType === 3 ? node.parentElement : node;
+      
+      const body = document.getElementById("noteBody");
+      let spEl = parentEl;
+      while (spEl && spEl.parentElement !== body) {
+        spEl = spEl.parentElement;
+      }
+      
+      if (spEl && spEl.parentElement === body) {
+        const isEmpty = spEl.textContent.trim() === "";
+        
+        // Empty action line (triple-enter) → insert blank spacer
+        if (isEmpty && spEl.classList.contains("sp-action")) {
+          e.preventDefault();
+          const spacer = document.createElement("div");
+          spacer.className = "sp-action";
+          spacer.innerHTML = "<br>";
+          spEl.after(spacer);
+          const range = document.createRange();
+          range.setStart(spacer, 0);
+          range.collapse(true);
+          sel.removeAllRanges();
+          sel.addRange(range);
+          onNoteBodyInput();
+          return;
+        }
+        
+        // Double-enter (empty line) from ANYTHING else → action
+        if (isEmpty) {
+          e.preventDefault();
+          spEl.remove();
+          spAutoAdvance("action");
+          return;
+        }
+        
+        // Character name + Enter → dialogue
+        if (spEl.classList.contains("sp-character")) {
+          e.preventDefault();
+          spAutoAdvance("dialogue");
+          return;
+        }
+        
+        // Parenthetical + Enter → dialogue (keep the closing paren on current line)
+        if (spEl.classList.contains("sp-paren")) {
+          e.preventDefault();
+          // Make sure the text ends with )
+          const text = spEl.textContent;
+          if (!text.endsWith(")")) {
+            spEl.textContent = text + ")";
+          }
+          spAutoAdvance("dialogue");
+          return;
+        }
+        
+        // Dialogue + Enter → name
+        if (spEl.classList.contains("sp-dialogue")) {
+          e.preventDefault();
+          spAutoAdvance("character");
+          return;
+        }
+      }
+    }
+  }
+  
+  // Ctrl+1-6 shortcuts
+  if (e.ctrlKey || e.metaKey) {
+    const formatMap = {"1":"action","2":"character","3":"dialogue","4":"paren","5":"center","6":"transition"};
+    if (formatMap[e.key]) {
+      e.preventDefault();
+      if (formatMap[e.key] === "paren") { spFormatParen(); }
+      else { spFormat(formatMap[e.key]); }
+    }
+  }
+});
+
+function spAutoAdvance(type) {
+  state.spCurrentFormat = type;
+  const body = document.getElementById("noteBody");
+  if (!body) return;
+  
+  const newDiv = document.createElement("div");
+  newDiv.className = "sp-" + type;
+  newDiv.innerHTML = "<br>";
+  
+  const sel = window.getSelection();
+  let inserted = false;
+  if (sel && sel.rangeCount > 0) {
+    const node = sel.anchorNode;
+    const parentEl = node.nodeType === 3 ? node.parentElement : node;
+    let topEl = parentEl;
+    while (topEl && topEl.parentElement !== body) {
+      topEl = topEl.parentElement;
+    }
+    if (topEl && topEl.parentElement === body) {
+      topEl.after(newDiv);
+      inserted = true;
+    }
+  }
+  
+  if (!inserted) {
+    body.appendChild(newDiv);
+  }
+  
+  // Move cursor into the new div
+  const range = document.createRange();
+  range.setStart(newDiv, 0);
+  range.collapse(true);
+  sel.removeAllRanges();
+  sel.addRange(range);
+  
+  onNoteBodyInput();
+  spUpdateUI(type);
 }
 
 // === LIVE CONTENT POLLING (every 3 seconds for active note) ===
@@ -1340,6 +1644,15 @@ function navigateToNote(pathArr) {
   state.view = "notes";
   state.sidebarOpen = false;
   lastLocalContentHash = "";
+  
+  // Restore screenplay mode from the note's saved mode
+  if (pathArr && pathArr.length > 0) {
+    const noteId = pathArr[pathArr.length - 1];
+    const note = state.notesFlat.find(n => n.id === noteId);
+    state.screenplayMode = (note && note.mode === "screenplay");
+    state.spCurrentFormat = "action";
+  }
+  
   updateHash();
   render();
   if (pathArr && pathArr.length > 0) {
@@ -1375,6 +1688,9 @@ async function init() {
     await loadNotesLite();
     if (state.activePath && state.activePath.length > 0) {
       const noteId = state.activePath[state.activePath.length - 1];
+      const note = state.notesFlat.find(n => n.id === noteId);
+      state.screenplayMode = (note && note.mode === "screenplay");
+      state.spCurrentFormat = "action";
       await loadNoteContent(noteId);
       startLivePolling();
     }
