@@ -1085,6 +1085,8 @@ function renderNotes(app) {
     html += '<button onmousedown="event.preventDefault();document.execCommand(\'strikeThrough\')" title="Strikethrough"><s>S</s></button>';
     html += '<div class="tb-sep"></div>';
     html += '<button onmousedown="event.preventDefault();insertLink()" title="Insert Link (Ctrl+K)">🔗</button>';
+    html += '<button onmousedown="event.preventDefault();copyScreenplayFormatted()" title="Copy with formatting">📋</button>';
+    html += '<button onmousedown="event.preventDefault();printScreenplay()" title="Print / Save as PDF">🖨</button>';
     // Screenplay toggle — camera emoji
     html += `<button onmousedown="event.preventDefault();toggleScreenplay()" title="Toggle Screenplay Mode" style="${state.screenplayMode?"background:var(--amber);color:var(--bg);border-color:var(--amber);":""}">🎥</button>`;
     html += '<button onmousedown="event.preventDefault();document.execCommand(\'removeFormat\')" title="Remove Formatting">✕</button>';
@@ -1288,7 +1290,27 @@ function toggleScreenplay() {
   const note = getActiveNote();
   if (note) {
     note.mode = state.screenplayMode ? "screenplay" : "";
-    saveNoteTitleDebounced(note.id); // This saves metadata including mode
+    saveNoteTitleDebounced(note.id);
+  }
+  
+  // When switching to screenplay mode, strip all inline font/size styling
+  // so the parent .sp-mode CSS (Courier New 12pt) takes over cleanly
+  if (state.screenplayMode) {
+    const body = document.getElementById("noteBody");
+    if (body) {
+      // Remove <font> tags (created by execCommand fontName/fontSize)
+      body.querySelectorAll("font").forEach(f => {
+        const span = document.createElement("span");
+        span.innerHTML = f.innerHTML;
+        f.replaceWith(span);
+      });
+      // Remove inline font-family and font-size from any element
+      body.querySelectorAll("[style]").forEach(el => {
+        el.style.fontFamily = "";
+        el.style.fontSize = "";
+      });
+      if (note) { note.content = body.innerHTML; saveNoteContentDebounced(note.id); }
+    }
   }
   
   render(true);
@@ -1556,6 +1578,71 @@ function spAutoAdvance(type) {
 }
 
 // === LIVE CONTENT POLLING (every 3 seconds for active note) ===
+
+// Generate inline-styled HTML for screenplay (used by copy and print)
+function getScreenplayHTML(title) {
+  const body = document.getElementById("noteBody");
+  if (!body) return "";
+  
+  const pageCSS = `
+    @page { size: letter; margin: 1in 1in 1in 1.5in; }
+    body { font-family: "Courier New", Courier, monospace; font-size: 12pt; line-height: 1.0; color: #000; max-width: 6in; margin: 0 auto; }
+    h1 { font-size: 14pt; text-align: center; margin-bottom: 24pt; font-weight: normal; text-transform: uppercase; }
+    .sp-action { display: block; text-align: left; margin: 12pt 0; padding: 0; }
+    .sp-character { display: block; text-align: left; text-transform: uppercase; margin: 12pt 0 0 0; padding-left: 2.2in; }
+    .sp-dialogue { display: block; margin: 0 0 12pt 0; padding-left: 1in; padding-right: 1in; }
+    .sp-paren { display: block; margin: 0; padding-left: 1.4in; padding-right: 1.4in; font-style: italic; }
+    .sp-center { display: block; text-align: center; margin: 12pt 0; }
+    .sp-transition { display: block; text-align: right; text-transform: uppercase; margin: 12pt 0; }
+  `;
+  
+  return '<!DOCTYPE html><html><head><meta charset="utf-8"><title>' + esc(title) + '</title><style>' + pageCSS + '</style></head><body><h1>' + esc(title) + '</h1>' + body.innerHTML + '</body></html>';
+}
+
+function copyScreenplayFormatted() {
+  const note = getActiveNote();
+  const title = note ? note.title : "Untitled";
+  const html = getScreenplayHTML(title);
+  
+  const body = document.getElementById("noteBody");
+  const plainText = body ? body.innerText : "";
+  
+  try {
+    const blob = new Blob([html], { type: "text/html" });
+    const textBlob = new Blob([plainText], { type: "text/plain" });
+    const item = new ClipboardItem({
+      "text/html": blob,
+      "text/plain": textBlob
+    });
+    navigator.clipboard.write([item]).then(() => {
+      setSaveDot("#5a7a4a");
+      hideSaveDot();
+    });
+  } catch(e) {
+    navigator.clipboard.writeText(plainText).catch(() => {
+      const ta = document.createElement("textarea");
+      ta.value = plainText;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+    });
+  }
+}
+
+function printScreenplay() {
+  const note = getActiveNote();
+  const title = note ? note.title : "Untitled";
+  const html = getScreenplayHTML(title);
+  
+  const printWindow = window.open("", "_blank");
+  if (!printWindow) { alert("Please allow popups to print."); return; }
+  printWindow.document.write(html);
+  printWindow.document.close();
+  setTimeout(() => { printWindow.print(); }, 300);
+}
+
+// === LIVE CONTENT POLLING ===
 let lastLocalContentHash = "";
 let livePollingInterval = null;
 
