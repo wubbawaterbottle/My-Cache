@@ -1302,7 +1302,6 @@ function toggleScreenplay() {
     // Immediate save — don't wait for debounce
     apiPost({ action: "saveNote", note: { id: note.id, parentId: note.parentId, title: note.title, sortOrder: note.sortOrder, mode: note.mode } });
   }
-  }
   
   // When switching to screenplay mode, strip all inline font/size styling
   // so the parent .sp-mode CSS (Courier New 12pt) takes over cleanly
