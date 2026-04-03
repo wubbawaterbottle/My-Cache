@@ -302,10 +302,19 @@ async function bgSync() {
             }
             local.parentId = serverNote.parentId;
             local.sortOrder = serverNote.sortOrder;
+            local.mode = serverNote.mode || "";
           } else {
             state.notesFlat.push({ ...serverNote, content: undefined });
           }
         });
+        
+        // Update screenplay mode if active note's mode changed from server
+        if (activeId) {
+          const activeNote = state.notesFlat.find(n => n.id === activeId);
+          if (activeNote) {
+            state.screenplayMode = (activeNote.mode === "screenplay");
+          }
+        }
         
         // Remove notes that no longer exist on server (but keep locally created notes that haven't synced yet)
         const serverIds = notes.map(n => n.id);
@@ -1286,11 +1295,13 @@ function toggleScreenplay() {
   state.screenplayMode = !state.screenplayMode;
   state.spCurrentFormat = "action";
   
-  // Save the mode to the note so it persists across devices/reloads
+  // Save the mode to the note — save IMMEDIATELY (not debounced) so it persists on refresh
   const note = getActiveNote();
   if (note) {
     note.mode = state.screenplayMode ? "screenplay" : "";
-    saveNoteTitleDebounced(note.id);
+    // Immediate save — don't wait for debounce
+    apiPost({ action: "saveNote", note: { id: note.id, parentId: note.parentId, title: note.title, sortOrder: note.sortOrder, mode: note.mode } });
+  }
   }
   
   // When switching to screenplay mode, strip all inline font/size styling
