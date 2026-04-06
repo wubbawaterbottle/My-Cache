@@ -1316,12 +1316,19 @@ function spFormat(type) {
     onNoteBodyInput(); spUpdateUI(type); return;
   }
 
-  // ── KEY FIX: If the top-level element has <br> children, split it line-by-line ──
-  // Only split unclassed blocks (raw pastes). Already-formatted sp-* elements are single lines.
-  const hasBrChildren = topEl.querySelector("br") !== null;
+  // ── KEY FIX: If the top-level element is a genuine multi-line paste block, split it ──
+  // A "real" multi-line block has a <br> with actual text content on at least one side of it.
+  // An empty div (cursor after double-Enter) has only a single <br> placeholder — don't split that.
+  // Already-formatted sp-* elements are always single lines — never split those.
   const isRawBlock = !topEl.className.startsWith("sp-");
+  const childNodes = Array.from(topEl.childNodes);
+  // Count non-BR, non-empty text nodes to determine if there's real multi-line content
+  const hasRealContent = childNodes.some(n => n.nodeName !== "BR" && (n.nodeType !== 3 || n.textContent.trim() !== ""));
+  const hasBrChildren = topEl.querySelector("br") !== null;
+  // Only split if: unclassed block AND has BR AND has actual text content (not just an empty placeholder)
+  const isMultiLinePaste = isRawBlock && hasBrChildren && hasRealContent;
 
-  if (hasBrChildren && isRawBlock) {
+  if (isMultiLinePaste) {
     // Split into individual divs at each <br>
     const frag = document.createDocumentFragment();
     const children = Array.from(topEl.childNodes);
