@@ -156,43 +156,30 @@ body { background: var(--bg); color: var(--text); font-family: var(--serif); min
 .note-editor { flex:1; display:flex; flex-direction:column; }
 .note-title-input { background:transparent; border:none; color:var(--text3); font-size:22px; font-family:var(--serif); padding:4px 0; margin-bottom:12px; outline:none; border-bottom:1px solid var(--border); }
 
-/* ── FIX 2: Sticky toolbars ── */
-.note-toolbar {
-  display:flex; gap:2px; padding:4px 0; margin-bottom:12px;
-  border-bottom:1px solid var(--border); flex-wrap:wrap; align-items:center;
-  position:sticky; top:0; z-index:10; background:var(--bg2);
-}
+/* Formatting toolbar */
+.note-toolbar { display:flex; gap:2px; padding:4px 0; margin-bottom:12px; border-bottom:1px solid var(--border); flex-wrap:wrap; align-items:center; }
 .note-toolbar button { background:transparent; border:1px solid transparent; color:var(--dim); padding:4px 8px; border-radius:4px; font-size:13px; cursor:pointer; font-family:var(--mono); transition:all 0.1s; min-width:30px; text-align:center; }
 .note-toolbar button:hover { background:var(--bg3); color:var(--text); border-color:var(--border); }
 .note-toolbar button.active { background:var(--bg3); color:var(--amber); border-color:var(--border2); }
 .note-toolbar .tb-sep { width:1px; background:var(--border); margin:2px 4px; align-self:stretch; }
 .tb-select { background:var(--bg); border:1px solid var(--border); color:var(--text); padding:3px 6px; border-radius:4px; font-size:11px; font-family:var(--mono); cursor:pointer; max-width:110px; }
-
 /* Screenplay mode indicator */
 .sp-indicator { display:inline-flex; align-items:center; gap:4px; font-size:10px; font-family:var(--mono); color:var(--amber); padding:0 6px; }
 .sp-current-mode { font-size:10px; font-family:var(--mono); color:var(--dim); padding:2px 6px; background:var(--bg3); border-radius:3px; }
 
-/* Screenplay toolbar — also sticky, just below main toolbar */
-.sp-toolbar {
-  gap:4px; padding:2px 0 !important;
-  position:sticky; top:41px; z-index:9; background:var(--bg2);
-  padding-bottom:4px !important;
-  border-bottom:1px solid var(--border);
-  margin-bottom:8px !important;
-}
+/* Screenplay toolbar */
+.sp-toolbar { gap:4px; padding:2px 0 !important; }
 .sp-btn { font-size:10px !important; padding:3px 8px !important; letter-spacing:0.3px; }
 .sp-btn.sp-active { background:var(--amber) !important; color:var(--bg) !important; border-color:var(--amber) !important; }
 
 /* Screenplay mode — Courier New 12pt, proper margins */
-.note-body.sp-mode { font-family:"Courier New", Courier, monospace !important; font-size:12pt !important; line-height:1.0 !important; max-width:720px; }
+.note-body.sp-mode { font-family:"Courier New", Courier, monospace !important; font-size:12pt !important; line-height:1.0 !important; max-width:640px; }
 .note-body.sp-mode .sp-action { display:block; text-align:left; margin:12px 0; padding-left:0 !important; padding-right:0 !important; }
-.note-body.sp-mode .sp-character { display:block; text-align:left; text-transform:uppercase; margin:12px 0 0 0; padding-left:252px; padding-right:0; }
-.note-body.sp-mode .sp-dialogue { display:block; margin:0 0 12px 0; padding-left:120px; padding-right:120px; }
-.note-body.sp-mode .sp-paren { display:block; margin:0; padding-left:168px; padding-right:168px; font-style:italic; }
+.note-body.sp-mode .sp-character { display:block; text-align:left; text-transform:uppercase; margin:12px 0 0 0; padding-left:180px; padding-right:0; }
+.note-body.sp-mode .sp-dialogue { display:block; margin:0 0 12px 0; padding-left:100px; padding-right:100px; }
+.note-body.sp-mode .sp-paren { display:block; margin:0; padding-left:130px; padding-right:130px; font-style:italic; }
 .note-body.sp-mode .sp-center { display:block; text-align:center; margin:12px 0; padding-left:0; padding-right:0; }
 .note-body.sp-mode .sp-transition { display:block; text-align:right; text-transform:uppercase; margin:12px 0; padding-left:0; padding-right:0; }
-.note-body.sp-mode div:not([class]) { display:block; text-align:left; margin:12px 0; padding-left:0 !important; padding-right:0 !important; }
-.note-body.sp-mode br + br { display:block; margin:6px 0; }
 
 .note-body { width:100%; background:transparent; border:none; color:var(--text); font-size:16px; font-family:var(--serif); padding:0; outline:none; resize:none; min-height:200px; line-height:1.7; overflow:hidden; white-space:pre-wrap; word-wrap:break-word; tab-size:6; -moz-tab-size:6; }
 .note-body.empty-placeholder:before { content:attr(data-placeholder); color:var(--dim3); pointer-events:none; }
@@ -222,9 +209,6 @@ body { background: var(--bg); color: var(--text); font-family: var(--serif); min
   .notes-main { padding:8px 4px; }
   .note-title-input { font-size:18px; }
   .note-body { font-size:15px; }
-  /* On mobile the sticky top offset is 0 since there's no fixed nav above */
-  .note-toolbar { top:0; }
-  .sp-toolbar { top:41px; }
 }
 
 /* === KANBAN BOARD === */
@@ -338,7 +322,7 @@ async function bgSync() {
         notes.forEach(serverNote => {
           const local = state.notesFlat.find(n => n.id === serverNote.id);
           if (local) {
-            if (serverNote.id !== activeId) local.title = serverNote.title;
+            if (serverNote.id !== activeId) { local.title = serverNote.title; }
             local.parentId = serverNote.parentId;
             local.sortOrder = serverNote.sortOrder;
             local.mode = serverNote.mode || "";
@@ -348,7 +332,7 @@ async function bgSync() {
         });
         if (activeId) {
           const activeNote = state.notesFlat.find(n => n.id === activeId);
-          if (activeNote) state.screenplayMode = (activeNote.mode === "screenplay");
+          if (activeNote) { state.screenplayMode = (activeNote.mode === "screenplay"); }
         }
         const serverIds = notes.map(n => n.id);
         state.notesFlat = state.notesFlat.filter(n => serverIds.includes(n.id) || creatingNotes[n.id]);
@@ -358,6 +342,7 @@ async function bgSync() {
   } catch(e) {}
 }
 
+// === DATA OPS ===
 async function loadAll() {
   setLoading(true);
   const data = await apiGet("getTasksOnly");
@@ -387,8 +372,7 @@ async function loadNotesLite() {
     state.notesFlat = notes.map(n => ({ ...n, content: undefined }));
     state.notesLiteLoaded = true;
   }
-  setLoading(false);
-  render();
+  setLoading(false); render();
 }
 
 async function loadNoteContent(noteId) {
@@ -400,8 +384,7 @@ async function loadNoteContent(noteId) {
     const note = state.notesFlat.find(n => n.id === noteId);
     if (note) note.content = result.content;
   }
-  setLoading(false);
-  render();
+  setLoading(false); render();
 }
 
 async function addTask() {
@@ -491,17 +474,10 @@ function buildNoteTree(flatNotes, parentId) {
     .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0))
     .map(n => ({ ...n, children: buildNoteTree(flatNotes, n.id) }));
 }
-
 function getNoteTree() { return buildNoteTree(state.notesFlat, ""); }
 
-function setSaveDot(color) {
-  const dot = document.getElementById("saveDot");
-  if (dot) { dot.style.background = color; dot.style.display = "block"; }
-}
-function hideSaveDot() {
-  const dot = document.getElementById("saveDot");
-  if (dot) setTimeout(() => { dot.style.display = "none"; }, 2000);
-}
+function setSaveDot(color) { const dot = document.getElementById("saveDot"); if (dot) { dot.style.background = color; dot.style.display = "block"; } }
+function hideSaveDot() { const dot = document.getElementById("saveDot"); if (dot) setTimeout(() => { dot.style.display = "none"; }, 2000); }
 
 let titleSaveTimers = {};
 let contentSaveTimers = {};
@@ -516,8 +492,7 @@ function saveNoteTitleDebounced(noteId) {
     const note = state.notesFlat.find(n => n.id === noteId);
     if (note) {
       const result = await apiPost({ action: "saveNote", note: { id: note.id, parentId: note.parentId, title: note.title, sortOrder: note.sortOrder, mode: note.mode || "" } });
-      if (result && !result.error) { setSaveDot("#5a7a4a"); hideSaveDot(); }
-      else { setSaveDot("#b04040"); }
+      if (result && !result.error) { setSaveDot("#5a7a4a"); hideSaveDot(); } else { setSaveDot("#b04040"); }
     }
   }, 1500);
 }
@@ -534,8 +509,7 @@ function saveNoteContentDebounced(noteId) {
     const note = state.notesFlat.find(n => n.id === noteId);
     if (note && note.content !== undefined) {
       const result = await apiPostForm({ action: "saveNoteContent", noteId: noteId, content: note.content });
-      if (result && !result.error) { setSaveDot("#5a7a4a"); hideSaveDot(); }
-      else { setSaveDot("#b04040"); }
+      if (result && !result.error) { setSaveDot("#5a7a4a"); hideSaveDot(); } else { setSaveDot("#b04040"); }
     }
   }, 2000);
 }
@@ -565,7 +539,6 @@ function apiPostForm(payload) {
 }
 
 function saveNoteDebounced(noteId) { saveNoteTitleDebounced(noteId); }
-
 function findNoteFlat(id) { return state.notesFlat.find(n => n.id === id); }
 function getActiveNote() {
   if (!state.activePath || state.activePath.length === 0) return null;
@@ -592,10 +565,10 @@ function addNoteToList(parentPath) {
     try {
       await apiPost({ action: "saveNote", note: { id, parentId, title: "Untitled", content: "", sortOrder } });
       const reorderUpdates = siblings.map(s => ({ id: s.id, sortOrder: s.sortOrder }));
-      if (reorderUpdates.length > 0) await apiPost({ action: "reorderNotes", updates: reorderUpdates });
+      if (reorderUpdates.length > 0) { await apiPost({ action: "reorderNotes", updates: reorderUpdates }); }
     } finally { delete creatingNotes[id]; }
     const note = findNoteFlat(id);
-    if (note && note.title !== "Untitled") saveNoteTitleDebounced(id);
+    if (note && note.title !== "Untitled") { saveNoteTitleDebounced(id); }
   })();
   setTimeout(() => { const el = document.getElementById("noteTitleInput"); if (el) { el.focus(); el.select(); } }, 100);
 }
@@ -609,9 +582,8 @@ async function executeDelete() {
   const id = path[path.length - 1];
   const toDelete = collectDescendants(id);
   state.notesFlat = state.notesFlat.filter(n => toDelete.indexOf(n.id) === -1);
-  if (state.activePath && toDelete.indexOf(state.activePath[state.activePath.length - 1]) !== -1) state.activePath = null;
-  state.confirmDeletePath = null;
-  render();
+  if (state.activePath && toDelete.indexOf(state.activePath[state.activePath.length - 1]) !== -1) { state.activePath = null; }
+  state.confirmDeletePath = null; render();
   await apiPost({ action: "deleteNoteRecursive", id });
 }
 
@@ -654,30 +626,27 @@ function onDragStart(e, noteId, parentId) {
   e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", noteId);
   e.target.closest(".ns-item").style.opacity = "0.4";
 }
-
 function onDragEnd(e) {
-  e.target.closest(".ns-item").style.opacity = "1";
-  dragNoteId = null; dragNoteParentId = null;
-  document.querySelectorAll(".drop-above,.drop-below,.drop-into").forEach(el => el.classList.remove("drop-above","drop-below","drop-into"));
+  e.target.closest(".ns-item").style.opacity = "1"; dragNoteId = null; dragNoteParentId = null;
+  document.querySelectorAll(".drop-above,.drop-below,.drop-into").forEach(el => { el.classList.remove("drop-above","drop-below","drop-into"); });
 }
-
 function onDragOver(e, targetId, targetParentId) {
   e.preventDefault(); if (targetId === dragNoteId) return;
   e.dataTransfer.dropEffect = "move";
   const item = e.target.closest(".ns-item"); if (!item) return;
-  document.querySelectorAll(".drop-above,.drop-below,.drop-into").forEach(el => el.classList.remove("drop-above","drop-below","drop-into"));
+  document.querySelectorAll(".drop-above,.drop-below,.drop-into").forEach(el => { el.classList.remove("drop-above","drop-below","drop-into"); });
   const rect = item.getBoundingClientRect(); const y = e.clientY - rect.top; const third = rect.height / 3;
   if (y < third) item.classList.add("drop-above");
   else if (y > third * 2) item.classList.add("drop-below");
   else item.classList.add("drop-into");
 }
-
 function onDrop(e, targetId, targetParentId) {
   e.preventDefault(); if (!dragNoteId || targetId === dragNoteId) return;
   const item = e.target.closest(".ns-item"); if (!item) return;
   const rect = item.getBoundingClientRect(); const y = e.clientY - rect.top; const third = rect.height / 3;
   const dragNote = findNoteFlat(dragNoteId); if (!dragNote) return;
-  const descendants = collectDescendants(dragNoteId); if (descendants.includes(targetId)) return;
+  const descendants = collectDescendants(dragNoteId);
+  if (descendants.includes(targetId)) return;
   if (y < third) {
     const targetNote = findNoteFlat(targetId);
     dragNote.parentId = targetNote.parentId || "";
@@ -699,7 +668,7 @@ function onDrop(e, targetId, targetParentId) {
     oldSiblings.sort((a,b) => (a.sortOrder||0) - (b.sortOrder||0));
     oldSiblings.forEach((s, i) => { s.sortOrder = i; });
   }
-  document.querySelectorAll(".drop-above,.drop-below,.drop-into").forEach(el => el.classList.remove("drop-above","drop-below","drop-into"));
+  document.querySelectorAll(".drop-above,.drop-below,.drop-into").forEach(el => { el.classList.remove("drop-above","drop-below","drop-into"); });
   render();
   apiPost({ action: "saveNote", note: { id: dragNote.id, parentId: dragNote.parentId, title: dragNote.title, sortOrder: dragNote.sortOrder } });
   const allUpdates = [...getChildren(dragNote.parentId)];
@@ -756,8 +725,7 @@ function render(force) {
     `</div>`;
 
   if (!document.getElementById("spinnerCSS")) {
-    const style = document.createElement("style");
-    style.id = "spinnerCSS";
+    const style = document.createElement("style"); style.id = "spinnerCSS";
     style.textContent = "@keyframes spin { to { transform: rotate(360deg); } }";
     document.head.appendChild(style);
   }
@@ -782,12 +750,10 @@ function renderTasks(app) {
   const grouped = groupByTimeline(filtered);
   const m = MODES[state.mode];
   let html = '';
-
   if (state.error) html += `<div class="error-banner">${esc(state.error)}</div>`;
   html += `<div class="header"><div class="header-top"><h1 class="title">THE CACHE</h1><div class="header-right">`;
   if (state.saveStatus) html += `<div class="save-status ${state.saveStatus.includes("✓")?"save-ok":"save-err"}">${esc(state.saveStatus)}</div>`;
   html += `<div class="count">${filtered.length} tasks</div></div></div><div class="subtitle">${esc(m.desc)}</div></div>`;
-
   html += '<div class="mode-bar">';
   Object.entries(MODES).forEach(([key, mo]) => {
     const active = state.mode===key;
@@ -795,14 +761,10 @@ function renderTasks(app) {
     html += `<button class="mode-btn" style="${style}" onclick="state.mode='${key}';render()"><span class="mode-icon">${mo.icon}</span>${mo.label}</button>`;
   });
   html += '</div>';
-
   html += '<div class="cat-bar">';
   html += `<button class="cat-btn ${state.filterCat==="all"?"active":""}" onclick="state.filterCat='all';render()">All</button>`;
-  state.categories.forEach(c => {
-    html += `<button class="cat-btn ${state.filterCat===c?"active":""}" onclick="state.filterCat='${esc(c)}';render()">${esc(c.replace("JPPF ",""))}</button>`;
-  });
+  state.categories.forEach(c => { html += `<button class="cat-btn ${state.filterCat===c?"active":""}" onclick="state.filterCat='${esc(c)}';render()">${esc(c.replace("JPPF ",""))}</button>`; });
   html += '</div>';
-
   html += '<div class="top-bar">';
   html += `<button class="btn-add" onclick="closeAllPanels('add');state.showAdd=!state.showAdd;render()">${state.showAdd?"✕ Cancel":"+ Add Task"}</button>`;
   html += `<button class="btn-done" onclick="closeAllPanels('done');state.showDone=!state.showDone;state.expandedDoneId=null;render()">${state.showDone?"Hide Done":"Done ("+state.doneTasks.length+")"}</button>`;
@@ -894,7 +856,6 @@ function renderTasks(app) {
   if (Object.keys(grouped).length===0) html += '<div class="empty">No tasks match this filter.</div>';
   html += '<div class="footer">Synced with Google Sheets · Mind / Film / JPPF</div>';
   app.innerHTML = html;
-
   if (state.showAdd) { const el=document.getElementById("addTaskInput"); if(el)el.focus(); }
   if (state.showEditCats) { const el=document.getElementById("newCatInput"); if(el&&!state.renamingCat)el.focus(); }
 }
@@ -917,9 +878,7 @@ function renderKanban(app) {
   html += '</div>';
   html += '<div class="cat-bar">';
   html += `<button class="cat-btn ${state.filterCat==="all"?"active":""}" onclick="state.filterCat='all';render()">All</button>`;
-  state.categories.forEach(c => {
-    html += `<button class="cat-btn ${state.filterCat===c?"active":""}" onclick="state.filterCat='${esc(c)}';render()">${esc(c.replace("JPPF ",""))}</button>`;
-  });
+  state.categories.forEach(c => { html += `<button class="cat-btn ${state.filterCat===c?"active":""}" onclick="state.filterCat='${esc(c)}';render()">${esc(c.replace("JPPF ",""))}</button>`; });
   html += '</div>';
   html += '<div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;">';
   html += '<input class="input" id="kbNewCatInput" placeholder="New category..." style="max-width:200px;font-size:12px;" onkeydown="if(event.key===\'Enter\')kbAddCategory()">';
@@ -943,13 +902,12 @@ function renderKanban(app) {
       cols.forEach((col, ci) => {
         const locked = ci === 0 || ci === cols.length - 1;
         html += `<div class="kb-col-item ${locked?"kb-col-locked":""}">`;
-        if (locked) {
-          html += `<span style="flex:1;">${esc(col)} (locked)</span>`;
-        } else {
+        if (locked) { html += `<span style="flex:1;">${esc(col)} (locked)</span>`; }
+        else {
           html += `<input class="kb-col-input" value="${esc(col)}" onchange="kbRenameCol('${esc(cat)}',${ci},this.value)">`;
-          html += `<button class="kb-col-btn" onclick="kbMoveCol('${esc(cat)}',${ci},-1)">◀</button>`;
-          html += `<button class="kb-col-btn" onclick="kbMoveCol('${esc(cat)}',${ci},1)">▶</button>`;
-          html += `<button class="kb-col-btn" onclick="kbDeleteCol('${esc(cat)}',${ci})" style="color:var(--red);">✕</button>`;
+          html += `<button class="kb-col-btn" onclick="kbMoveCol('${esc(cat)}',${ci},-1)" title="Move left">◀</button>`;
+          html += `<button class="kb-col-btn" onclick="kbMoveCol('${esc(cat)}',${ci},1)" title="Move right">▶</button>`;
+          html += `<button class="kb-col-btn" onclick="kbDeleteCol('${esc(cat)}',${ci})" title="Delete" style="color:var(--red);">✕</button>`;
         }
         html += '</div>';
       });
@@ -968,8 +926,7 @@ function renderKanban(app) {
         const mi = MODES[task.mode] || MODES.mind;
         html += `<div class="kb-card" draggable="true" data-task-id="${task.id}" ondragstart="kbDragStart(event,'${task.id}')" ondragend="kbDragEnd(event)">`;
         html += `<div class="kb-card-title">${esc(task.title)}</div>`;
-        html += `<div class="kb-card-meta"><span class="kb-card-priority">P${task.priority}</span><span style="color:${mi.color}">${mi.icon}</span><span>${esc(task.timeline)}</span></div>`;
-        html += '</div>';
+        html += `<div class="kb-card-meta"><span class="kb-card-priority">P${task.priority}</span><span style="color:${mi.color}">${mi.icon}</span><span>${esc(task.timeline)}</span></div></div>`;
       });
       html += '</div>';
     });
@@ -1000,8 +957,7 @@ function kbDragEnd(e) { e.target.classList.remove("kb-dragging"); kbDragTaskId =
 function kbDragOver(e) { e.preventDefault(); e.dataTransfer.dropEffect = "move"; const col = e.target.closest(".kb-col"); if (col) col.classList.add("kb-col-over"); }
 function kbDragLeave(e) { const col = e.target.closest(".kb-col"); if (col) col.classList.remove("kb-col-over"); }
 function kbDrop(e, cat, col) {
-  e.preventDefault();
-  document.querySelectorAll(".kb-col-over").forEach(el => el.classList.remove("kb-col-over"));
+  e.preventDefault(); document.querySelectorAll(".kb-col-over").forEach(el => el.classList.remove("kb-col-over"));
   if (!kbDragTaskId) return;
   const task = state.tasks.find(t => t.id === kbDragTaskId); if (!task) return;
   const cols = state.kanbanColumns[cat] || [];
@@ -1011,45 +967,32 @@ function kbDrop(e, cat, col) {
 }
 function kbAddCol(cat) {
   const inputId = "kbNewCol_" + cat.replace(/\s/g, '_');
-  const input = document.getElementById(inputId);
-  if (!input || !input.value.trim()) return;
-  const name = input.value.trim();
-  const cols = state.kanbanColumns[cat];
-  cols.splice(cols.length - 1, 0, name);
-  render();
-  apiPost({ action: "saveKanbanColumns", category: cat, columns: cols });
+  const input = document.getElementById(inputId); if (!input || !input.value.trim()) return;
+  const cols = state.kanbanColumns[cat]; cols.splice(cols.length - 1, 0, input.value.trim());
+  render(); apiPost({ action: "saveKanbanColumns", category: cat, columns: cols });
 }
 function kbRenameCol(cat, idx, newName) {
-  if (!newName.trim()) return;
-  const cols = state.kanbanColumns[cat];
-  const oldName = cols[idx]; cols[idx] = newName.trim();
+  if (!newName.trim()) return; const cols = state.kanbanColumns[cat]; const oldName = cols[idx];
+  cols[idx] = newName.trim();
   state.tasks.forEach(t => { if (t.category === cat && t.kanbanCol === oldName) t.kanbanCol = newName.trim(); });
-  render();
-  apiPost({ action: "saveKanbanColumns", category: cat, columns: cols });
+  render(); apiPost({ action: "saveKanbanColumns", category: cat, columns: cols });
   state.tasks.filter(t => t.category === cat && t.kanbanCol === newName.trim()).forEach(t => { apiPost({ action: "saveKanbanCol", taskId: t.id, col: newName.trim() }); });
 }
 function kbMoveCol(cat, idx, dir) {
-  const cols = state.kanbanColumns[cat];
-  const newIdx = idx + dir;
+  const cols = state.kanbanColumns[cat]; const newIdx = idx + dir;
   if (newIdx <= 0 || newIdx >= cols.length - 1) return;
   [cols[idx], cols[newIdx]] = [cols[newIdx], cols[idx]];
-  render();
-  apiPost({ action: "saveKanbanColumns", category: cat, columns: cols });
+  render(); apiPost({ action: "saveKanbanColumns", category: cat, columns: cols });
 }
 function kbDeleteCol(cat, idx) {
-  const cols = state.kanbanColumns[cat];
-  const colName = cols[idx];
+  const cols = state.kanbanColumns[cat]; const colName = cols[idx];
   state.tasks.forEach(t => { if (t.category === cat && t.kanbanCol === colName) { t.kanbanCol = "Unsorted"; apiPost({ action: "saveKanbanCol", taskId: t.id, col: "Unsorted" }); } });
-  cols.splice(idx, 1); render();
-  apiPost({ action: "saveKanbanColumns", category: cat, columns: cols });
+  cols.splice(idx, 1); render(); apiPost({ action: "saveKanbanColumns", category: cat, columns: cols });
 }
 function kbAddCategory() {
-  const input = document.getElementById("kbNewCatInput");
-  if (!input || !input.value.trim()) return;
-  const name = input.value.trim();
-  if (state.categories.includes(name)) return;
-  state.categories.push(name);
-  state.kanbanColumns[name] = ["Unsorted", "Not Started", "Doing", "Finishing", "Done"];
+  const input = document.getElementById("kbNewCatInput"); if (!input || !input.value.trim()) return;
+  const name = input.value.trim(); if (state.categories.includes(name)) return;
+  state.categories.push(name); state.kanbanColumns[name] = ["Unsorted", "Not Started", "Doing", "Finishing", "Done"];
   input.value = ""; render();
   apiPost({ action: "updateCategories", categories: state.categories.join(",") });
   apiPost({ action: "saveKanbanColumns", category: name, columns: state.kanbanColumns[name] });
@@ -1066,11 +1009,9 @@ function renderNotes(app) {
   html += '<div class="ns-header"><span class="ns-title">Notes</span><button class="ns-add" onclick="addNoteToList([])" title="New note">+</button></div>';
   html += renderNoteTreeHTML(noteTree, []);
   html += '</div>';
-
   if (state.confirmDeletePath) {
     const delId = state.confirmDeletePath[state.confirmDeletePath.length - 1];
-    const delNote = findNoteFlat(delId);
-    const name = delNote ? delNote.title : "this note";
+    const delNote = findNoteFlat(delId); const name = delNote ? delNote.title : "this note";
     const totalDescendants = collectDescendants(delId).length - 1;
     html += '<div style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;z-index:100;">';
     html += '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:24px;max-width:340px;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,0.1);">';
@@ -1082,35 +1023,27 @@ function renderNotes(app) {
     html += '<button onclick="cancelDelete()" style="background:transparent;border:1px solid var(--border2);color:var(--dim);padding:8px 20px;border-radius:6px;font-size:13px;cursor:pointer;font-family:var(--mono);">Cancel</button>';
     html += '</div></div></div>';
   }
-
   html += '<div class="notes-main">';
   const activeNote = getActiveNote();
   if (activeNote) {
     html += `<input class="note-title-input" id="noteTitleInput" value="${esc(activeNote.title)}" oninput="updateNoteField('title',this.value)" onkeydown="if(event.key==='Tab'){event.preventDefault();var b=document.getElementById('noteBody');if(b)b.focus();}" placeholder="Note title">`;
     html += '<div class="note-toolbar">';
     html += '<select class="tb-select" onchange="document.execCommand(\'fontName\',false,this.value);document.getElementById(\'noteBody\').focus()" title="Font">';
-    html += '<option value="EB Garamond, Georgia, serif">Garamond</option>';
-    html += '<option value="Georgia, serif">Georgia</option>';
-    html += '<option value="Times New Roman, serif">Times New Roman</option>';
-    html += '<option value="Arial, sans-serif">Arial</option>';
-    html += '<option value="Courier New, monospace">Courier New</option>';
-    html += '</select>';
+    html += '<option value="EB Garamond, Georgia, serif">Garamond</option><option value="Georgia, serif">Georgia</option><option value="Times New Roman, serif">Times New Roman</option><option value="Arial, sans-serif">Arial</option><option value="Courier New, monospace">Courier New</option></select>';
     html += '<select class="tb-select" onchange="document.execCommand(\'fontSize\',false,this.value);document.getElementById(\'noteBody\').focus()" title="Font Size">';
-    html += '<option value="2">Small</option><option value="3" selected>Normal</option><option value="4">Medium</option><option value="5">Large</option><option value="6">X-Large</option>';
-    html += '</select>';
+    html += '<option value="2">Small</option><option value="3" selected>Normal</option><option value="4">Medium</option><option value="5">Large</option><option value="6">X-Large</option></select>';
     html += '<div class="tb-sep"></div>';
-    html += '<button onmousedown="event.preventDefault();document.execCommand(\'bold\')" title="Bold"><b>B</b></button>';
-    html += '<button onmousedown="event.preventDefault();document.execCommand(\'italic\')" title="Italic"><i>I</i></button>';
-    html += '<button onmousedown="event.preventDefault();document.execCommand(\'underline\')" title="Underline"><u>U</u></button>';
+    html += '<button onmousedown="event.preventDefault();document.execCommand(\'bold\')" title="Bold (Ctrl+B)"><b>B</b></button>';
+    html += '<button onmousedown="event.preventDefault();document.execCommand(\'italic\')" title="Italic (Ctrl+I)"><i>I</i></button>';
+    html += '<button onmousedown="event.preventDefault();document.execCommand(\'underline\')" title="Underline (Ctrl+U)"><u>U</u></button>';
     html += '<button onmousedown="event.preventDefault();document.execCommand(\'strikeThrough\')" title="Strikethrough"><s>S</s></button>';
     html += '<div class="tb-sep"></div>';
-    html += '<button onmousedown="event.preventDefault();insertLink()" title="Insert Link">🔗</button>';
+    html += '<button onmousedown="event.preventDefault();insertLink()" title="Insert Link (Ctrl+K)">🔗</button>';
     html += '<button onmousedown="event.preventDefault();copyScreenplayFormatted()" title="Copy with formatting">📋</button>';
     html += '<button onmousedown="event.preventDefault();printScreenplay()" title="Print / Save as PDF">🖨</button>';
     html += `<button onmousedown="event.preventDefault();toggleScreenplay()" title="Toggle Screenplay Mode" style="${state.screenplayMode?"background:var(--amber);color:var(--bg);border-color:var(--amber);":""}">🎥</button>`;
     html += '<button onmousedown="event.preventDefault();document.execCommand(\'removeFormat\')" title="Remove Formatting">✕</button>';
     html += '</div>';
-
     if (state.screenplayMode) {
       html += '<div class="note-toolbar sp-toolbar">';
       html += `<button onmousedown="event.preventDefault();spFormat('action')" class="sp-btn ${state.spCurrentFormat==='action'?'sp-active':''}">Action</button>`;
@@ -1122,7 +1055,6 @@ function renderNotes(app) {
       html += `<span class="sp-current-mode">${state.spCurrentFormat}</span>`;
       html += '</div>';
     }
-
     if (activeNote.content === undefined) {
       html += '<div style="color:var(--dim);font-size:14px;padding:20px 0;">Loading note...</div>';
     } else {
@@ -1144,8 +1076,7 @@ function renderNotes(app) {
       const link = e.target.closest("a");
       if (link && link.href) {
         if (link.dataset.tapped) { e.preventDefault(); e.stopPropagation(); window.open(link.href, "_blank"); link.dataset.tapped = ""; return; }
-        link.dataset.tapped = "1";
-        setTimeout(() => { link.dataset.tapped = ""; }, 600);
+        link.dataset.tapped = "1"; setTimeout(() => { link.dataset.tapped = ""; }, 600);
       }
     });
     body.addEventListener("mousedown", (e) => {
@@ -1164,20 +1095,16 @@ function renderNotes(app) {
 }
 
 function renderNoteTreeHTML(list, parentPath, depth) {
-  depth = depth || 0;
-  if (!list || list.length === 0) return "";
-  const maxIndent = 6;
-  const indent = Math.min(depth, maxIndent) * 12;
-  let html = "";
-  list.forEach((note, i) => {
-    const path = [...parentPath, note.id];
-    const pathStr = path.join("|");
+  depth = depth || 0; if (!list || list.length === 0) return "";
+  const indent = Math.min(depth, 6) * 12; let html = "";
+  list.forEach((note) => {
+    const path = [...parentPath, note.id]; const pathStr = path.join("|");
     const isActive = state.activePath && state.activePath.join("|") === pathStr;
     const hasChildren = note.children && note.children.length > 0;
     const isExpanded = expandedNodes[note.id];
     html += `<div class="ns-item ${isActive?"active":""}" data-note-id="${note.id}" style="padding-left:${12+indent}px" onclick="navByPath('${pathStr}')" draggable="true" ondragstart="onDragStart(event,'${note.id}','${note.parentId||""}')" ondragend="onDragEnd(event)" ondragover="onDragOver(event,'${note.id}','${note.parentId||""}')" ondrop="onDrop(event,'${note.id}','${note.parentId||""}')">`;
-    if (hasChildren) html += `<span class="ns-item-arrow ${isExpanded?"open":""}" onclick="event.stopPropagation();toggleExpand('${note.id}')">▶</span>`;
-    else if (depth > 0) html += '<span style="width:12px;display:inline-block;"></span>';
+    if (hasChildren) { html += `<span class="ns-item-arrow ${isExpanded?"open":""}" onclick="event.stopPropagation();toggleExpand('${note.id}')">▶</span>`; }
+    else if (depth > 0) { html += '<span style="width:12px;display:inline-block;"></span>'; }
     html += `<span class="ns-item-label">${esc(note.title)}</span>`;
     html += '<div class="ns-item-actions">';
     html += `<button class="ns-act-btn" onclick="event.stopPropagation();addNoteToList(pathFromStr('${pathStr}'))" title="Add sub-note">+</button>`;
@@ -1185,7 +1112,7 @@ function renderNoteTreeHTML(list, parentPath, depth) {
     html += `<div class="ns-move-btns"><button class="ns-move-btn" onclick="event.stopPropagation();moveNoteToTop(pathFromStr('${pathStr}'))" title="Move to top">⤒</button><button class="ns-move-btn" onclick="event.stopPropagation();moveNoteToBottom(pathFromStr('${pathStr}'))" title="Move to bottom">⤓</button></div>`;
     html += `<button class="ns-act-btn" onclick="event.stopPropagation();confirmDeleteNote('${pathStr}')" title="Delete">✕</button>`;
     html += '</div></div>';
-    if (hasChildren && isExpanded) html += renderNoteTreeHTML(note.children, path, depth + 1);
+    if (hasChildren && isExpanded) { html += renderNoteTreeHTML(note.children, path, depth + 1); }
   });
   return html;
 }
@@ -1201,9 +1128,7 @@ function updateNoteField(field, value) {
     const items = document.querySelectorAll("[data-note-id='" + note.id + "'] .ns-item-label");
     items.forEach(el => { el.textContent = value || "Untitled"; });
     saveNoteTitleDebounced(note.id);
-  } else if (field === "content") {
-    saveNoteContentDebounced(note.id);
-  }
+  } else if (field === "content") { saveNoteContentDebounced(note.id); }
 }
 
 function onNoteBodyInput() {
@@ -1216,8 +1141,7 @@ function onNoteBodyInput() {
 
 function insertLink() {
   const body = document.getElementById("noteBody"); if (!body) return;
-  const sel = window.getSelection();
-  let savedRange = null, hasSelection = false;
+  const sel = window.getSelection(); let savedRange = null; let hasSelection = false;
   if (sel && sel.rangeCount > 0) { savedRange = sel.getRangeAt(0).cloneRange(); hasSelection = !sel.isCollapsed; }
   const url = prompt("Enter URL:", "https://");
   if (!url || url === "https://") return;
@@ -1226,8 +1150,7 @@ function insertLink() {
   if (hasSelection) { document.execCommand("createLink", false, url); }
   else { document.execCommand("insertHTML", false, `<a href="${url}" target="_blank" rel="noopener" contenteditable="false">${esc(url)}</a>&nbsp;`); }
   setTimeout(() => {
-    const links = body.querySelectorAll("a");
-    links.forEach(a => { a.setAttribute("target", "_blank"); a.setAttribute("rel", "noopener"); a.setAttribute("contenteditable", "false"); });
+    body.querySelectorAll("a").forEach(a => { a.setAttribute("target", "_blank"); a.setAttribute("rel", "noopener"); a.setAttribute("contenteditable", "false"); });
     onNoteBodyInput();
   }, 50);
 }
@@ -1252,142 +1175,125 @@ function toggleScreenplay() {
     }
   }
   render(true);
-  const body = document.getElementById("noteBody");
-  if (body) body.focus();
+  const body = document.getElementById("noteBody"); if (body) body.focus();
 }
 
 function spFormatParen() {
   state.spCurrentFormat = "paren";
   const body = document.getElementById("noteBody"); if (!body) return;
   body.focus();
-  const sel = window.getSelection();
-  if (!sel || sel.rangeCount === 0) return;
-  const node = sel.anchorNode;
-  const parentEl = node.nodeType === 3 ? node.parentElement : node;
-  let topEl = parentEl;
-  while (topEl && topEl.parentElement !== body) topEl = topEl.parentElement;
+  const sel = window.getSelection(); if (!sel || sel.rangeCount === 0) return;
+  const node = sel.anchorNode; const parentEl = node.nodeType === 3 ? node.parentElement : node;
+  let topEl = parentEl; while (topEl && topEl.parentElement !== body) { topEl = topEl.parentElement; }
   if (topEl && topEl.parentElement === body && topEl.textContent.trim() === "") {
     topEl.className = "sp-paren"; topEl.innerHTML = "()";
-    const textNode = topEl.firstChild;
-    const range = document.createRange();
-    range.setStart(textNode, 1); range.collapse(true);
-    sel.removeAllRanges(); sel.addRange(range);
+    const textNode = topEl.firstChild; const range = document.createRange();
+    range.setStart(textNode, 1); range.collapse(true); sel.removeAllRanges(); sel.addRange(range);
   } else {
-    const newDiv = document.createElement("div");
-    newDiv.className = "sp-paren"; newDiv.innerHTML = "()";
-    if (topEl && topEl.parentElement === body) topEl.after(newDiv);
-    else body.appendChild(newDiv);
-    const textNode = newDiv.firstChild;
-    const range = document.createRange();
-    range.setStart(textNode, 1); range.collapse(true);
-    sel.removeAllRanges(); sel.addRange(range);
+    const newDiv = document.createElement("div"); newDiv.className = "sp-paren"; newDiv.innerHTML = "()";
+    if (topEl && topEl.parentElement === body) { topEl.after(newDiv); } else { body.appendChild(newDiv); }
+    const textNode = newDiv.firstChild; const range = document.createRange();
+    range.setStart(textNode, 1); range.collapse(true); sel.removeAllRanges(); sel.addRange(range);
   }
-  onNoteBodyInput();
-  spUpdateUI("paren");
+  onNoteBodyInput(); spUpdateUI("paren");
 }
 
-// ── FIX 1: spFormat — splits multi-BR divs so Tab only affects the cursor's line ──
 function spFormat(type) {
   state.spCurrentFormat = type;
-  const body = document.getElementById("noteBody");
-  if (!body) return;
+  const body = document.getElementById("noteBody"); if (!body) return;
   body.focus();
+  const sel = window.getSelection(); if (!sel || sel.rangeCount === 0) return;
+  const node = sel.anchorNode; const parentEl = node.nodeType === 3 ? node.parentElement : node;
+  let topEl = parentEl; while (topEl && topEl.parentElement !== body) { topEl = topEl.parentElement; }
 
-  const sel = window.getSelection();
-  if (!sel || sel.rangeCount === 0) return;
+  if (topEl && topEl.parentElement === body) {
+    // === FIX 2: Split blocks that contain <br> elements ===
+    // If this block has <br> inside it, the cursor might be on a different
+    // visual line than the block's start. Split at <br> boundaries so we
+    // only restyle the line the cursor is actually on.
+    if (topEl.querySelector("br") && topEl.childNodes.length > 1) {
+      const allNodes = Array.from(topEl.childNodes);
+      let cursorIdx = -1;
 
-  const range = sel.getRangeAt(0);
-  const node = sel.anchorNode;
-  const parentEl = node.nodeType === 3 ? node.parentElement : node;
-
-  // Walk up to find the top-level element (direct child of body)
-  let topEl = parentEl;
-  while (topEl && topEl.parentElement !== body) topEl = topEl.parentElement;
-
-  // If cursor is directly in body, wrap in a div
-  if (!topEl || topEl === body) {
-    const wrapper = document.createElement("div");
-    wrapper.className = "sp-" + type;
-    if (node.nodeType === 3) { node.parentNode.insertBefore(wrapper, node); wrapper.appendChild(node); }
-    else { wrapper.innerHTML = "<br>"; body.appendChild(wrapper); }
-    const newRange = document.createRange();
-    newRange.selectNodeContents(wrapper); newRange.collapse(false);
-    sel.removeAllRanges(); sel.addRange(newRange);
-    onNoteBodyInput(); spUpdateUI(type); return;
-  }
-
-  // ── KEY FIX: If the top-level element is a genuine multi-line paste block, split it ──
-  // A "real" multi-line block has a <br> with actual text content on at least one side of it.
-  // An empty div (cursor after double-Enter) has only a single <br> placeholder — don't split that.
-  // Already-formatted sp-* elements are always single lines — never split those.
-  const isRawBlock = !topEl.className.startsWith("sp-");
-  const childNodes = Array.from(topEl.childNodes);
-  // Count non-BR, non-empty text nodes to determine if there's real multi-line content
-  const hasRealContent = childNodes.some(n => n.nodeName !== "BR" && (n.nodeType !== 3 || n.textContent.trim() !== ""));
-  const hasBrChildren = topEl.querySelector("br") !== null;
-  // Only split if: unclassed block AND has BR AND has actual text content (not just an empty placeholder)
-  const isMultiLinePaste = isRawBlock && hasBrChildren && hasRealContent;
-
-  if (isMultiLinePaste) {
-    // Split into individual divs at each <br>
-    const frag = document.createDocumentFragment();
-    const children = Array.from(topEl.childNodes);
-    let currentDiv = document.createElement("div");
-    currentDiv.className = "sp-action";
-    let cursorDiv = null;
-
-    children.forEach(child => {
-      if (child.nodeName === "BR") {
-        if (currentDiv.childNodes.length === 0) currentDiv.innerHTML = "<br>";
-        frag.appendChild(currentDiv);
-        currentDiv = document.createElement("div");
-        currentDiv.className = "sp-action";
-      } else {
-        // Track which div contains the cursor
-        if (!cursorDiv) {
-          try {
-            if (range.intersectsNode(child) || child === node || child.contains(node)) {
-              cursorDiv = currentDiv;
-            }
-          } catch(e) {}
+      for (let i = 0; i < allNodes.length; i++) {
+        const child = allNodes[i];
+        if (child === sel.anchorNode || child.contains(sel.anchorNode) ||
+            (sel.anchorNode === topEl && sel.anchorOffset === i)) {
+          cursorIdx = i;
+          break;
         }
-        currentDiv.appendChild(child.cloneNode(true));
       }
-    });
-    if (currentDiv.childNodes.length === 0) currentDiv.innerHTML = "<br>";
-    frag.appendChild(currentDiv);
-    if (!cursorDiv) cursorDiv = currentDiv; // default to last
 
-    // Apply the requested format ONLY to the cursor's line
-    cursorDiv.className = "sp-" + type;
+      // Also handle case where anchorNode is topEl and offset is past all children
+      if (cursorIdx === -1 && sel.anchorNode === topEl) {
+        cursorIdx = sel.anchorOffset;
+      }
 
-    topEl.parentNode.replaceChild(frag, topEl);
+      // Find the last <br> before the cursor position
+      let splitBr = null;
+      let splitIdx = -1;
+      for (let i = 0; i < allNodes.length; i++) {
+        if (allNodes[i].nodeName === "BR" && i < (cursorIdx >= 0 ? cursorIdx : allNodes.length)) {
+          splitBr = allNodes[i];
+          splitIdx = i;
+        }
+      }
 
-    // Move cursor to end of the formatted line
-    const newRange = document.createRange();
-    if (cursorDiv.firstChild) { newRange.selectNodeContents(cursorDiv); newRange.collapse(false); }
-    else { newRange.setStart(cursorDiv, 0); newRange.collapse(true); }
-    sel.removeAllRanges(); sel.addRange(newRange);
+      if (splitBr && splitIdx >= 0) {
+        // Split: nodes after the <br> go into a new div with the new format
+        const newDiv = document.createElement("div");
+        newDiv.className = "sp-" + type;
 
-    onNoteBodyInput(); spUpdateUI(type); return;
+        // Move (not clone) nodes after the <br> into new div
+        while (topEl.childNodes.length > splitIdx + 1) {
+          newDiv.appendChild(topEl.childNodes[splitIdx + 1]);
+        }
+        if (newDiv.childNodes.length === 0) newDiv.innerHTML = "<br>";
+
+        // Remove the <br> itself
+        splitBr.remove();
+
+        // If original is now empty, give it a <br>
+        if (topEl.childNodes.length === 0) topEl.innerHTML = "<br>";
+
+        // Insert new div after topEl
+        topEl.after(newDiv);
+
+        // Place cursor in the new div
+        const newRange = document.createRange();
+        if (newDiv.firstChild && newDiv.firstChild.nodeType === 3) {
+          newRange.setStart(newDiv.firstChild, 0);
+        } else {
+          newRange.setStart(newDiv, 0);
+        }
+        newRange.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(newRange);
+
+        onNoteBodyInput();
+        spUpdateUI(type);
+        return;
+      }
+    }
+
+    // If leaving paren format, strip the ( ) characters
+    if (topEl.classList.contains("sp-paren") && type !== "paren") {
+      let text = topEl.textContent;
+      text = text.replace(/^\(/, "").replace(/\)$/, "").trim();
+      topEl.textContent = text || "";
+      if (!text) topEl.innerHTML = "<br>";
+      const range = document.createRange();
+      if (topEl.firstChild) { range.setStart(topEl.firstChild, topEl.firstChild.textContent.length); }
+      else { range.setStart(topEl, 0); }
+      range.collapse(true); sel.removeAllRanges(); sel.addRange(range);
+    }
+    topEl.className = "sp-" + type;
+  } else {
+    const newDiv = document.createElement("div"); newDiv.className = "sp-" + type; newDiv.innerHTML = "<br>";
+    body.appendChild(newDiv);
+    const range = document.createRange(); range.setStart(newDiv, 0); range.collapse(true);
+    sel.removeAllRanges(); sel.addRange(range);
   }
-
-  // Single-line element — safe to just swap the class
-  // Strip paren brackets if leaving paren format
-  if (topEl.classList.contains("sp-paren") && type !== "paren") {
-    let text = topEl.textContent;
-    text = text.replace(/^\(/, "").replace(/\)$/, "").trim();
-    topEl.textContent = text || "";
-    if (!text) topEl.innerHTML = "<br>";
-    const newRange = document.createRange();
-    if (topEl.firstChild) newRange.setStart(topEl.firstChild, topEl.firstChild.textContent.length);
-    else newRange.setStart(topEl, 0);
-    newRange.collapse(true);
-    sel.removeAllRanges(); sel.addRange(newRange);
-  }
-
-  topEl.className = "sp-" + type;
-
   onNoteBodyInput(); spUpdateUI(type);
 }
 
@@ -1404,10 +1310,10 @@ function spUpdateUI(type) {
 function spCycleFormat() {
   const idx = SP_FORMATS.indexOf(state.spCurrentFormat);
   const next = SP_FORMATS[(idx + 1) % SP_FORMATS.length];
-  if (next === "paren") spFormatParen();
-  else spFormat(next);
+  if (next === "paren") { spFormatParen(); } else { spFormat(next); }
 }
 
+// Keyboard handler for screenplay mode
 document.addEventListener("keydown", function(e) {
   if (!state.screenplayMode) return;
   const body = document.getElementById("noteBody");
@@ -1420,34 +1326,52 @@ document.addEventListener("keydown", function(e) {
     if (sel && sel.rangeCount > 0) {
       const node = sel.anchorNode;
       const parentEl = node.nodeType === 3 ? node.parentElement : node;
+      const body = document.getElementById("noteBody");
       let spEl = parentEl;
-      while (spEl && spEl.parentElement !== body) spEl = spEl.parentElement;
+      while (spEl && spEl.parentElement !== body) { spEl = spEl.parentElement; }
+
       if (spEl && spEl.parentElement === body) {
         const isEmpty = spEl.textContent.trim() === "";
+
         if (isEmpty && spEl.classList.contains("sp-action")) {
           e.preventDefault();
           const spacer = document.createElement("div"); spacer.className = "sp-action"; spacer.innerHTML = "<br>";
           spEl.after(spacer);
           const range = document.createRange(); range.setStart(spacer, 0); range.collapse(true);
-          sel.removeAllRanges(); sel.addRange(range);
-          onNoteBodyInput(); return;
+          sel.removeAllRanges(); sel.addRange(range); onNoteBodyInput(); return;
         }
+
         if (isEmpty) { e.preventDefault(); spEl.remove(); spAutoAdvance("action"); return; }
+
         if (spEl.classList.contains("sp-character")) { e.preventDefault(); spAutoAdvance("dialogue"); return; }
+
         if (spEl.classList.contains("sp-paren")) {
           e.preventDefault();
           const text = spEl.textContent;
-          if (!text.endsWith(")")) spEl.textContent = text + ")";
+          if (!text.endsWith(")")) { spEl.textContent = text + ")"; }
           spAutoAdvance("dialogue"); return;
         }
+
         if (spEl.classList.contains("sp-dialogue")) { e.preventDefault(); spAutoAdvance("character"); return; }
+
+        // === FIX 1: Catch-all for any screenplay-formatted line with content ===
+        // Prevents browser default Enter from creating <br> inside existing blocks,
+        // which would cause Tab (spFormat) to restyle the wrong line.
+        if (spEl.className && spEl.className.startsWith("sp-")) {
+          e.preventDefault();
+          spAutoAdvance("action");
+          return;
+        }
       }
     }
   }
 
   if (e.ctrlKey || e.metaKey) {
     const formatMap = {"1":"action","2":"character","3":"dialogue","4":"paren","5":"center","6":"transition"};
-    if (formatMap[e.key]) { e.preventDefault(); if (formatMap[e.key] === "paren") spFormatParen(); else spFormat(formatMap[e.key]); }
+    if (formatMap[e.key]) {
+      e.preventDefault();
+      if (formatMap[e.key] === "paren") { spFormatParen(); } else { spFormat(formatMap[e.key]); }
+    }
   }
 });
 
@@ -1455,20 +1379,50 @@ function spAutoAdvance(type) {
   state.spCurrentFormat = type;
   const body = document.getElementById("noteBody"); if (!body) return;
   const newDiv = document.createElement("div"); newDiv.className = "sp-" + type; newDiv.innerHTML = "<br>";
-  const sel = window.getSelection();
-  let inserted = false;
+  const sel = window.getSelection(); let inserted = false;
   if (sel && sel.rangeCount > 0) {
-    const node = sel.anchorNode;
-    const parentEl = node.nodeType === 3 ? node.parentElement : node;
-    let topEl = parentEl;
-    while (topEl && topEl.parentElement !== body) topEl = topEl.parentElement;
+    const node = sel.anchorNode; const parentEl = node.nodeType === 3 ? node.parentElement : node;
+    let topEl = parentEl; while (topEl && topEl.parentElement !== body) { topEl = topEl.parentElement; }
     if (topEl && topEl.parentElement === body) { topEl.after(newDiv); inserted = true; }
   }
-  if (!inserted) body.appendChild(newDiv);
+  if (!inserted) { body.appendChild(newDiv); }
   const range = document.createRange(); range.setStart(newDiv, 0); range.collapse(true);
   sel.removeAllRanges(); sel.addRange(range);
   onNoteBodyInput(); spUpdateUI(type);
 }
+
+// === LIVE CONTENT POLLING ===
+let lastLocalContentHash = "";
+let livePollingInterval = null;
+
+function simpleHash(str) {
+  if (!str) return "0"; let hash = 0;
+  for (let i = 0; i < str.length; i++) { const c = str.charCodeAt(i); hash = ((hash << 5) - hash) + c; hash |= 0; }
+  return hash.toString();
+}
+
+function startLivePolling() {
+  if (livePollingInterval) clearInterval(livePollingInterval);
+  livePollingInterval = setInterval(async () => {
+    if (state.view !== "notes" || !state.activePath || state.activePath.length === 0) return;
+    const body = document.getElementById("noteBody");
+    if (body && document.activeElement === body) return;
+    const activeId = state.activePath[state.activePath.length - 1];
+    if (contentSaveTimers[activeId]) return;
+    const result = await apiCall("action=getNoteContent&noteId=" + activeId);
+    if (result.error || result.content === undefined) return;
+    const serverHash = simpleHash(result.content);
+    const localHash = lastLocalContentHash || simpleHash(body ? body.innerHTML : "");
+    if (serverHash !== localHash) {
+      const note = state.notesFlat.find(n => n.id === activeId);
+      if (note) { note.content = result.content; lastLocalContentHash = serverHash;
+        if (body && document.activeElement !== body) { body.innerHTML = result.content; }
+      }
+    }
+  }, 3000);
+}
+
+function stopLivePolling() { if (livePollingInterval) { clearInterval(livePollingInterval); livePollingInterval = null; } }
 
 function getScreenplayHTML(title) {
   const body = document.getElementById("noteBody"); if (!body) return "";
@@ -1481,8 +1435,7 @@ function getScreenplayHTML(title) {
     .sp-dialogue { display: block; margin: 0 0 12pt 0; padding-left: 1in; padding-right: 1in; }
     .sp-paren { display: block; margin: 0; padding-left: 1.4in; padding-right: 1.4in; font-style: italic; }
     .sp-center { display: block; text-align: center; margin: 12pt 0; }
-    .sp-transition { display: block; text-align: right; text-transform: uppercase; margin: 12pt 0; }
-  `;
+    .sp-transition { display: block; text-align: right; text-transform: uppercase; margin: 12pt 0; }`;
   return '<!DOCTYPE html><html><head><meta charset="utf-8"><title>' + esc(title) + '</title><style>' + pageCSS + '</style></head><body><h1>' + esc(title) + '</h1>' + body.innerHTML + '</body></html>';
 }
 
@@ -1492,8 +1445,7 @@ function copyScreenplayFormatted() {
   const body = document.getElementById("noteBody"); const plainText = body ? body.innerText : "";
   try {
     const blob = new Blob([html], { type: "text/html" }); const textBlob = new Blob([plainText], { type: "text/plain" });
-    const item = new ClipboardItem({ "text/html": blob, "text/plain": textBlob });
-    navigator.clipboard.write([item]).then(() => { setSaveDot("#5a7a4a"); hideSaveDot(); });
+    navigator.clipboard.write([new ClipboardItem({ "text/html": blob, "text/plain": textBlob })]).then(() => { setSaveDot("#5a7a4a"); hideSaveDot(); });
   } catch(e) {
     navigator.clipboard.writeText(plainText).catch(() => {
       const ta = document.createElement("textarea"); ta.value = plainText; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); document.body.removeChild(ta);
@@ -1510,57 +1462,20 @@ function printScreenplay() {
   setTimeout(() => { printWindow.print(); }, 300);
 }
 
-// === LIVE CONTENT POLLING ===
-let lastLocalContentHash = "";
-let livePollingInterval = null;
-
-function simpleHash(str) {
-  if (!str) return "0";
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) { const c = str.charCodeAt(i); hash = ((hash << 5) - hash) + c; hash |= 0; }
-  return hash.toString();
-}
-
-function startLivePolling() {
-  if (livePollingInterval) clearInterval(livePollingInterval);
-  livePollingInterval = setInterval(async () => {
-    if (state.view !== "notes" || !state.activePath || state.activePath.length === 0) return;
-    const body = document.getElementById("noteBody");
-    const isTyping = body && document.activeElement === body;
-    if (isTyping) return;
-    const activeId = state.activePath[state.activePath.length - 1];
-    if (contentSaveTimers[activeId]) return;
-    const result = await apiCall("action=getNoteContent&noteId=" + activeId);
-    if (result.error || result.content === undefined) return;
-    const serverHash = simpleHash(result.content);
-    const localHash = lastLocalContentHash || simpleHash(body ? body.innerHTML : "");
-    if (serverHash !== localHash) {
-      const note = state.notesFlat.find(n => n.id === activeId);
-      if (note) {
-        note.content = result.content; lastLocalContentHash = serverHash;
-        if (body && document.activeElement !== body) body.innerHTML = result.content;
-      }
-    }
-  }, 3000);
-}
-
-function stopLivePolling() { if (livePollingInterval) { clearInterval(livePollingInterval); livePollingInterval = null; } }
-
 // === URL HASH ROUTING ===
 function updateHash() {
-  if (state.view === "notes" && state.activePath && state.activePath.length > 0) window.location.hash = "note/" + state.activePath.join("/");
-  else if (state.view === "tasks") window.location.hash = "tasks";
-  else if (state.view === "notes") window.location.hash = "notes";
+  if (state.view === "notes" && state.activePath && state.activePath.length > 0) { window.location.hash = "note/" + state.activePath.join("/"); }
+  else if (state.view === "tasks") { window.location.hash = "tasks"; }
+  else if (state.view === "notes") { window.location.hash = "notes"; }
 }
 
 function readHash() {
-  const hash = window.location.hash.replace("#", "");
-  if (!hash) return;
+  const hash = window.location.hash.replace("#", ""); if (!hash) return;
   const parts = hash.split("/");
   if (parts[0] === "tasks") { state.view = "tasks"; }
   else if (parts[0] === "note" && parts.length > 1) {
     state.view = "notes"; state.activePath = parts.slice(1);
-    for (let i = 0; i < state.activePath.length; i++) expandedNodes[state.activePath[i]] = true;
+    for (let i = 0; i < state.activePath.length; i++) { expandedNodes[state.activePath[i]] = true; }
   } else if (parts[0] === "notes") { state.view = "notes"; }
 }
 
@@ -1569,15 +1484,14 @@ function navigateToNote(pathArr) {
   if (pathArr && pathArr.length > 0) {
     const noteId = pathArr[pathArr.length - 1];
     const note = state.notesFlat.find(n => n.id === noteId);
-    state.screenplayMode = (note && note.mode === "screenplay");
-    state.spCurrentFormat = "action";
+    state.screenplayMode = (note && note.mode === "screenplay"); state.spCurrentFormat = "action";
   }
   updateHash(); render();
   if (pathArr && pathArr.length > 0) {
     const noteId = pathArr[pathArr.length - 1];
     const note = state.notesFlat.find(n => n.id === noteId);
-    if (note && note.content === undefined) loadNoteContent(noteId);
-    else if (note) lastLocalContentHash = simpleHash(note.content || "");
+    if (note && note.content === undefined) { loadNoteContent(noteId); }
+    else if (note) { lastLocalContentHash = simpleHash(note.content || ""); }
     startLivePolling();
   }
 }
@@ -1596,24 +1510,20 @@ window.addEventListener("hashchange", () => { readHash(); render(); });
 
 // === INIT ===
 async function init() {
-  await loadAll();
-  readHash();
+  await loadAll(); readHash();
   if (state.view === "notes") {
     await loadNotesLite();
     if (state.activePath && state.activePath.length > 0) {
       const noteId = state.activePath[state.activePath.length - 1];
       const note = state.notesFlat.find(n => n.id === noteId);
-      state.screenplayMode = (note && note.mode === "screenplay");
-      state.spCurrentFormat = "action";
-      await loadNoteContent(noteId);
-      startLivePolling();
+      state.screenplayMode = (note && note.mode === "screenplay"); state.spCurrentFormat = "action";
+      await loadNoteContent(noteId); startLivePolling();
     }
   }
   render();
   setInterval(() => {
     const body = document.getElementById("noteBody");
-    const isTyping = body && document.activeElement === body;
-    if (!isTyping) bgSync();
+    if (!(body && document.activeElement === body)) { bgSync(); }
   }, 15000);
 }
 init();
