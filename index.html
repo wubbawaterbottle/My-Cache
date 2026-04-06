@@ -156,30 +156,43 @@ body { background: var(--bg); color: var(--text); font-family: var(--serif); min
 .note-editor { flex:1; display:flex; flex-direction:column; }
 .note-title-input { background:transparent; border:none; color:var(--text3); font-size:22px; font-family:var(--serif); padding:4px 0; margin-bottom:12px; outline:none; border-bottom:1px solid var(--border); }
 
-/* Formatting toolbar */
-.note-toolbar { display:flex; gap:2px; padding:4px 0; margin-bottom:12px; border-bottom:1px solid var(--border); flex-wrap:wrap; align-items:center; }
+/* ── FIX 2: Sticky toolbars ── */
+.note-toolbar {
+  display:flex; gap:2px; padding:4px 0; margin-bottom:12px;
+  border-bottom:1px solid var(--border); flex-wrap:wrap; align-items:center;
+  position:sticky; top:0; z-index:10; background:var(--bg2);
+}
 .note-toolbar button { background:transparent; border:1px solid transparent; color:var(--dim); padding:4px 8px; border-radius:4px; font-size:13px; cursor:pointer; font-family:var(--mono); transition:all 0.1s; min-width:30px; text-align:center; }
 .note-toolbar button:hover { background:var(--bg3); color:var(--text); border-color:var(--border); }
 .note-toolbar button.active { background:var(--bg3); color:var(--amber); border-color:var(--border2); }
 .note-toolbar .tb-sep { width:1px; background:var(--border); margin:2px 4px; align-self:stretch; }
 .tb-select { background:var(--bg); border:1px solid var(--border); color:var(--text); padding:3px 6px; border-radius:4px; font-size:11px; font-family:var(--mono); cursor:pointer; max-width:110px; }
+
 /* Screenplay mode indicator */
 .sp-indicator { display:inline-flex; align-items:center; gap:4px; font-size:10px; font-family:var(--mono); color:var(--amber); padding:0 6px; }
 .sp-current-mode { font-size:10px; font-family:var(--mono); color:var(--dim); padding:2px 6px; background:var(--bg3); border-radius:3px; }
 
-/* Screenplay toolbar */
-.sp-toolbar { gap:4px; padding:2px 0 !important; }
+/* Screenplay toolbar — also sticky, just below main toolbar */
+.sp-toolbar {
+  gap:4px; padding:2px 0 !important;
+  position:sticky; top:41px; z-index:9; background:var(--bg2);
+  padding-bottom:4px !important;
+  border-bottom:1px solid var(--border);
+  margin-bottom:8px !important;
+}
 .sp-btn { font-size:10px !important; padding:3px 8px !important; letter-spacing:0.3px; }
 .sp-btn.sp-active { background:var(--amber) !important; color:var(--bg) !important; border-color:var(--amber) !important; }
 
 /* Screenplay mode — Courier New 12pt, proper margins */
-.note-body.sp-mode { font-family:"Courier New", Courier, monospace !important; font-size:12pt !important; line-height:1.0 !important; max-width:640px; }
+.note-body.sp-mode { font-family:"Courier New", Courier, monospace !important; font-size:12pt !important; line-height:1.0 !important; max-width:720px; }
 .note-body.sp-mode .sp-action { display:block; text-align:left; margin:12px 0; padding-left:0 !important; padding-right:0 !important; }
-.note-body.sp-mode .sp-character { display:block; text-align:left; text-transform:uppercase; margin:12px 0 0 0; padding-left:180px; padding-right:0; }
-.note-body.sp-mode .sp-dialogue { display:block; margin:0 0 12px 0; padding-left:100px; padding-right:100px; }
-.note-body.sp-mode .sp-paren { display:block; margin:0; padding-left:130px; padding-right:130px; font-style:italic; }
+.note-body.sp-mode .sp-character { display:block; text-align:left; text-transform:uppercase; margin:12px 0 0 0; padding-left:252px; padding-right:0; }
+.note-body.sp-mode .sp-dialogue { display:block; margin:0 0 12px 0; padding-left:120px; padding-right:120px; }
+.note-body.sp-mode .sp-paren { display:block; margin:0; padding-left:168px; padding-right:168px; font-style:italic; }
 .note-body.sp-mode .sp-center { display:block; text-align:center; margin:12px 0; padding-left:0; padding-right:0; }
 .note-body.sp-mode .sp-transition { display:block; text-align:right; text-transform:uppercase; margin:12px 0; padding-left:0; padding-right:0; }
+.note-body.sp-mode div:not([class]) { display:block; text-align:left; margin:12px 0; padding-left:0 !important; padding-right:0 !important; }
+.note-body.sp-mode br + br { display:block; margin:6px 0; }
 
 .note-body { width:100%; background:transparent; border:none; color:var(--text); font-size:16px; font-family:var(--serif); padding:0; outline:none; resize:none; min-height:200px; line-height:1.7; overflow:hidden; white-space:pre-wrap; word-wrap:break-word; tab-size:6; -moz-tab-size:6; }
 .note-body.empty-placeholder:before { content:attr(data-placeholder); color:var(--dim3); pointer-events:none; }
@@ -209,6 +222,9 @@ body { background: var(--bg); color: var(--text); font-family: var(--serif); min
   .notes-main { padding:8px 4px; }
   .note-title-input { font-size:18px; }
   .note-body { font-size:15px; }
+  /* On mobile the sticky top offset is 0 since there's no fixed nav above */
+  .note-toolbar { top:0; }
+  .sp-toolbar { top:41px; }
 }
 
 /* === KANBAN BOARD === */
@@ -263,7 +279,7 @@ const TIMELINES = ["Today", "This Week", "This Month", "This Quarter", "Later"];
 const TIMELINE_COLORS = { "Today":"#c4882a", "This Week":"#b07a24", "This Month":"#8a857e", "This Quarter":"#9e9990", "Later":"#b5b0a8" };
 
 let state = {
-  view: "tasks", // "tasks" or "notes"
+  view: "tasks",
   tasks:[], doneTasks:[], categories:["JPPF Post","JPPF General","JPPF Chores","Hatman","General","Chores"],
   mode:"all", filterCat:"all",
   showAdd:false, showDone:false, showEditCats:false,
@@ -271,9 +287,7 @@ let state = {
   newTask:{ title:"", category:"JPPF General", timeline:"This Quarter", valuable:3, urgency:3, mode:"mind" },
   newCatName:"", renamingCat:null, renameCatValue:"",
   saveStatus:"", loaded:false, error:null,
-  // Kanban
   kanbanView:false, kanbanColumns:{}, editingKanbanCat:null,
-  // Notes
   notesFlat:[], activePath:null, confirmDeletePath:null, sidebarOpen:false,
   noteSaveTimers:{}, notesLiteLoaded:false, isLoading:false, screenplayMode:false, spCurrentFormat:"action",
 };
@@ -295,7 +309,6 @@ function apiPost(payload) { return apiCall("payload=" + encodeURIComponent(JSON.
 
 function showSave(msg, ok) { state.saveStatus = msg; render(); setTimeout(() => { state.saveStatus = ""; render(); }, ok ? 1500 : 3000); }
 
-// Loading indicator
 function setLoading(isLoading) {
   state.isLoading = isLoading;
   const el = document.getElementById("loadingIndicator");
@@ -313,27 +326,19 @@ async function bgSync() {
         render();
       }
     } else if (state.view === "notes") {
-      // Don't sync if ANY saves are pending or notes are being created
       const hasPendingSaves = Object.keys(state.noteSaveTimers).length > 0 || Object.keys(creatingNotes).length > 0 || Object.keys(titleSaveTimers).length > 0 || Object.keys(contentSaveTimers).length > 0;
       if (hasPendingSaves) return;
-      
-      // Don't sync if user is actively typing in title or body
       const titleInput = document.getElementById("noteTitleInput");
       const bodyEl = document.getElementById("noteBody");
       const isTyping = (titleInput && document.activeElement === titleInput) || (bodyEl && document.activeElement === bodyEl);
       if (isTyping) return;
-      
       const notes = await apiGet("getNotesLite");
       if (!notes.error && Array.isArray(notes)) {
         const activeId = state.activePath ? state.activePath[state.activePath.length - 1] : null;
-        
         notes.forEach(serverNote => {
           const local = state.notesFlat.find(n => n.id === serverNote.id);
           if (local) {
-            // NEVER overwrite the active note's title — user might be editing it
-            if (serverNote.id !== activeId) {
-              local.title = serverNote.title;
-            }
+            if (serverNote.id !== activeId) local.title = serverNote.title;
             local.parentId = serverNote.parentId;
             local.sortOrder = serverNote.sortOrder;
             local.mode = serverNote.mode || "";
@@ -341,29 +346,18 @@ async function bgSync() {
             state.notesFlat.push({ ...serverNote, content: undefined });
           }
         });
-        
-        // Update screenplay mode if active note's mode changed from server
         if (activeId) {
           const activeNote = state.notesFlat.find(n => n.id === activeId);
-          if (activeNote) {
-            state.screenplayMode = (activeNote.mode === "screenplay");
-          }
+          if (activeNote) state.screenplayMode = (activeNote.mode === "screenplay");
         }
-        
-        // Remove notes that no longer exist on server (but keep locally created notes that haven't synced yet)
         const serverIds = notes.map(n => n.id);
         state.notesFlat = state.notesFlat.filter(n => serverIds.includes(n.id) || creatingNotes[n.id]);
-        
-        // Only re-render if not typing
         if (!isTyping) render();
       }
     }
   } catch(e) {}
 }
 
-// === DATA OPS (optimistic) ===
-
-// Initial load — tasks + settings only (fast)
 async function loadAll() {
   setLoading(true);
   const data = await apiGet("getTasksOnly");
@@ -372,7 +366,6 @@ async function loadAll() {
   state.doneTasks = data.done || [];
   if (data.settings) {
     if (data.settings.categories) state.categories = data.settings.categories.split(",").map(s=>s.trim()).filter(Boolean);
-    // Load kanban column configs per category
     Object.keys(data.settings).forEach(key => {
       if (key.startsWith("kanban_")) {
         const cat = key.replace("kanban_", "");
@@ -380,33 +373,27 @@ async function loadAll() {
       }
     });
   }
-  // Ensure every category has default kanban columns
   const defaultCols = ["Unsorted","Not Started","Doing","Finishing","Done"];
-  state.categories.forEach(cat => {
-    if (!state.kanbanColumns[cat]) state.kanbanColumns[cat] = [...defaultCols];
-  });
-  // Ensure every task has a kanbanCol
+  state.categories.forEach(cat => { if (!state.kanbanColumns[cat]) state.kanbanColumns[cat] = [...defaultCols]; });
   state.tasks.forEach(t => { if (!t.kanbanCol) t.kanbanCol = "Unsorted"; });
   state.loaded = true; state.error = null; setLoading(false); render();
 }
 
-// Load notes structure (titles only) — called when switching to Notes tab
 async function loadNotesLite() {
-  if (state.notesLiteLoaded) return; // Already loaded
+  if (state.notesLiteLoaded) return;
   setLoading(true);
   const notes = await apiGet("getNotesLite");
   if (!notes.error && Array.isArray(notes)) {
-    state.notesFlat = notes.map(n => ({ ...n, content: undefined })); // No content yet
+    state.notesFlat = notes.map(n => ({ ...n, content: undefined }));
     state.notesLiteLoaded = true;
   }
   setLoading(false);
   render();
 }
 
-// Load single note content — called when clicking a note
 async function loadNoteContent(noteId) {
   const note = state.notesFlat.find(n => n.id === noteId);
-  if (note && note.content !== undefined) return; // Already loaded
+  if (note && note.content !== undefined) return;
   setLoading(true);
   const result = await apiCall("action=getNoteContent&noteId=" + noteId);
   if (!result.error && result.content !== undefined) {
@@ -497,22 +484,16 @@ async function saveRenameCategory() {
   showSave("Renamed ✓", true); bgSync();
 }
 
-// === NOTES OPS (flat rows — each note saved individually) ===
-
-// Build tree from flat array for rendering
+// === NOTES OPS ===
 function buildNoteTree(flatNotes, parentId) {
   return flatNotes
     .filter(n => (n.parentId || "") === (parentId || ""))
     .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0))
-    .map(n => ({
-      ...n,
-      children: buildNoteTree(flatNotes, n.id)
-    }));
+    .map(n => ({ ...n, children: buildNoteTree(flatNotes, n.id) }));
 }
 
 function getNoteTree() { return buildNoteTree(state.notesFlat, ""); }
 
-// Save a single note (debounced per-note) with status dot
 function setSaveDot(color) {
   const dot = document.getElementById("saveDot");
   if (dot) { dot.style.background = color; dot.style.display = "block"; }
@@ -522,18 +503,16 @@ function hideSaveDot() {
   if (dot) setTimeout(() => { dot.style.display = "none"; }, 2000);
 }
 
-// Separate timers for title vs content
 let titleSaveTimers = {};
 let contentSaveTimers = {};
 
 function saveNoteTitleDebounced(noteId) {
-  // Don't save title if note is still being created on server
   if (creatingNotes[noteId]) return;
   setSaveDot("#d4a056");
   if (titleSaveTimers[noteId]) clearTimeout(titleSaveTimers[noteId]);
   titleSaveTimers[noteId] = setTimeout(async () => {
     delete titleSaveTimers[noteId];
-    if (creatingNotes[noteId]) return; // Double-check
+    if (creatingNotes[noteId]) return;
     const note = state.notesFlat.find(n => n.id === noteId);
     if (note) {
       const result = await apiPost({ action: "saveNote", note: { id: note.id, parentId: note.parentId, title: note.title, sortOrder: note.sortOrder, mode: note.mode || "" } });
@@ -544,7 +523,6 @@ function saveNoteTitleDebounced(noteId) {
 }
 
 function saveNoteContentDebounced(noteId) {
-  // Don't save content if note is still being created on server
   if (creatingNotes[noteId]) return;
   setSaveDot("#d4a056");
   if (contentSaveTimers[noteId]) clearTimeout(contentSaveTimers[noteId]);
@@ -552,7 +530,7 @@ function saveNoteContentDebounced(noteId) {
   contentSaveTimers[noteId] = setTimeout(async () => {
     delete contentSaveTimers[noteId];
     delete state.noteSaveTimers[noteId];
-    if (creatingNotes[noteId]) return; // Double-check
+    if (creatingNotes[noteId]) return;
     const note = state.notesFlat.find(n => n.id === noteId);
     if (note && note.content !== undefined) {
       const result = await apiPostForm({ action: "saveNoteContent", noteId: noteId, content: note.content });
@@ -562,195 +540,109 @@ function saveNoteContentDebounced(noteId) {
   }, 2000);
 }
 
-// POST via hidden iframe form — handles large content without URL length limits
 function apiPostForm(payload) {
   return new Promise((resolve) => {
     const id = "postframe_" + Date.now();
     const iframe = document.createElement("iframe");
-    iframe.name = id;
-    iframe.style.display = "none";
+    iframe.name = id; iframe.style.display = "none";
     document.body.appendChild(iframe);
-
     const form = document.createElement("form");
-    form.method = "POST";
-    form.action = API_URL;
-    form.target = id;
-    form.style.display = "none";
-
+    form.method = "POST"; form.action = API_URL; form.target = id; form.style.display = "none";
     const input = document.createElement("input");
-    input.type = "hidden";
-    input.name = "payload";
-    input.value = JSON.stringify(payload);
-    form.appendChild(input);
-
-    document.body.appendChild(form);
-
-    // Listen for iframe load (response came back)
+    input.type = "hidden"; input.name = "payload"; input.value = JSON.stringify(payload);
+    form.appendChild(input); document.body.appendChild(form);
     iframe.onload = function() {
-      // Give it a moment to render
       setTimeout(() => {
-        try {
-          const text = iframe.contentDocument.body.innerText;
-          resolve(JSON.parse(text));
-        } catch(e) {
-          // Can't read cross-origin iframe — but if it loaded, the save likely worked
-          resolve({ success: true });
-        }
-        document.body.removeChild(iframe);
-        document.body.removeChild(form);
+        try { const text = iframe.contentDocument.body.innerText; resolve(JSON.parse(text)); }
+        catch(e) { resolve({ success: true }); }
+        document.body.removeChild(iframe); document.body.removeChild(form);
       }, 200);
     };
-
-    iframe.onerror = function() {
-      resolve({ error: "Network error" });
-      document.body.removeChild(iframe);
-      document.body.removeChild(form);
-    };
-
+    iframe.onerror = function() { resolve({ error: "Network error" }); document.body.removeChild(iframe); document.body.removeChild(form); };
     form.submit();
-
-    // Timeout fallback
-    setTimeout(() => {
-      resolve({ success: true }); // Assume it worked if no response in 15s
-    }, 15000);
+    setTimeout(() => { resolve({ success: true }); }, 15000);
   });
 }
 
-// Keep old name for compatibility with note structure saves (add, delete, move)
-function saveNoteDebounced(noteId) {
-  saveNoteTitleDebounced(noteId);
-}
+function saveNoteDebounced(noteId) { saveNoteTitleDebounced(noteId); }
 
-// Find note in flat list
 function findNoteFlat(id) { return state.notesFlat.find(n => n.id === id); }
-
-// Get the note pointed to by activePath
 function getActiveNote() {
   if (!state.activePath || state.activePath.length === 0) return null;
-  const id = state.activePath[state.activePath.length - 1];
-  return findNoteFlat(id);
+  return findNoteFlat(state.activePath[state.activePath.length - 1]);
 }
-
-// Get children of a note
 function getChildren(parentId) {
-  return state.notesFlat
-    .filter(n => (n.parentId || "") === (parentId || ""))
-    .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+  return state.notesFlat.filter(n => (n.parentId || "") === (parentId || "")).sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
 }
 
-// Track notes that are still being created on the server
 let creatingNotes = {};
 
 function addNoteToList(parentPath) {
   const id = "n_" + Date.now() + "_" + Math.random().toString(36).substr(2,4);
   const parentId = parentPath && parentPath.length > 0 ? parentPath[parentPath.length - 1] : "";
   const siblings = getChildren(parentId);
-  
-  // Shift all siblings' sort order up by 1 to make room at top
   siblings.forEach(s => { s.sortOrder = (s.sortOrder || 0) + 1; });
   const sortOrder = 0;
-  
   state.notesFlat.push({ id, parentId, title: "Untitled", content: "", sortOrder, createdAt: new Date().toISOString() });
   state.activePath = parentPath ? [...parentPath, id] : [id];
-  
   if (parentId) expandedNodes[parentId] = true;
-  
-  // Mark as creating — blocks ALL saves for this note until creation completes
   creatingNotes[id] = true;
-  
   render();
-  
-  // Serialize: create the note FIRST, then reorder siblings AFTER
   (async () => {
     try {
       await apiPost({ action: "saveNote", note: { id, parentId, title: "Untitled", content: "", sortOrder } });
-      
-      // Now reorder siblings (only after the note exists on server)
       const reorderUpdates = siblings.map(s => ({ id: s.id, sortOrder: s.sortOrder }));
-      if (reorderUpdates.length > 0) {
-        await apiPost({ action: "reorderNotes", updates: reorderUpdates });
-      }
-    } finally {
-      delete creatingNotes[id];
-    }
-    
-    // If user already changed the title while we were creating, save it now
+      if (reorderUpdates.length > 0) await apiPost({ action: "reorderNotes", updates: reorderUpdates });
+    } finally { delete creatingNotes[id]; }
     const note = findNoteFlat(id);
-    if (note && note.title !== "Untitled") {
-      saveNoteTitleDebounced(id);
-    }
+    if (note && note.title !== "Untitled") saveNoteTitleDebounced(id);
   })();
-  
   setTimeout(() => { const el = document.getElementById("noteTitleInput"); if (el) { el.focus(); el.select(); } }, 100);
 }
 
-function confirmDeleteNote(pathStr) {
-  state.confirmDeletePath = pathStr.split("|");
-  render();
-}
-
-function cancelDelete() {
-  state.confirmDeletePath = null;
-  render();
-}
+function confirmDeleteNote(pathStr) { state.confirmDeletePath = pathStr.split("|"); render(); }
+function cancelDelete() { state.confirmDeletePath = null; render(); }
 
 async function executeDelete() {
   const path = state.confirmDeletePath;
   if (!path || path.length === 0) return;
   const id = path[path.length - 1];
-  
-  // Collect all descendant IDs
   const toDelete = collectDescendants(id);
-  
-  // Remove from local state
   state.notesFlat = state.notesFlat.filter(n => toDelete.indexOf(n.id) === -1);
-  
-  if (state.activePath && toDelete.indexOf(state.activePath[state.activePath.length - 1]) !== -1) {
-    state.activePath = null;
-  }
+  if (state.activePath && toDelete.indexOf(state.activePath[state.activePath.length - 1]) !== -1) state.activePath = null;
   state.confirmDeletePath = null;
   render();
-  
-  // Delete from Sheet
   await apiPost({ action: "deleteNoteRecursive", id });
 }
 
 function collectDescendants(id) {
   const result = [id];
-  const children = state.notesFlat.filter(n => n.parentId === id);
-  children.forEach(c => {
-    result.push(...collectDescendants(c.id));
-  });
+  state.notesFlat.filter(n => n.parentId === id).forEach(c => { result.push(...collectDescendants(c.id)); });
   return result;
 }
 
 function moveNoteToTop(path) {
   if (!path || path.length === 0) return;
   const id = path[path.length - 1];
-  const note = findNoteFlat(id);
-  if (!note) return;
+  const note = findNoteFlat(id); if (!note) return;
   const siblings = getChildren(note.parentId || "");
-  // Set this note to -1, then renumber all
   note.sortOrder = -1;
   let order = 0;
   siblings.sort((a,b) => (a.sortOrder||0) - (b.sortOrder||0)).forEach(s => { s.sortOrder = order++; });
   render();
-  const updates = siblings.map(s => ({ id: s.id, sortOrder: s.sortOrder }));
-  apiPost({ action: "reorderNotes", updates });
+  apiPost({ action: "reorderNotes", updates: siblings.map(s => ({ id: s.id, sortOrder: s.sortOrder })) });
 }
 
 function moveNoteToBottom(path) {
   if (!path || path.length === 0) return;
   const id = path[path.length - 1];
-  const note = findNoteFlat(id);
-  if (!note) return;
+  const note = findNoteFlat(id); if (!note) return;
   const siblings = getChildren(note.parentId || "");
   note.sortOrder = 99999;
   let order = 0;
   siblings.sort((a,b) => (a.sortOrder||0) - (b.sortOrder||0)).forEach(s => { s.sortOrder = order++; });
   render();
-  const updates = siblings.map(s => ({ id: s.id, sortOrder: s.sortOrder }));
-  apiPost({ action: "reorderNotes", updates });
+  apiPost({ action: "reorderNotes", updates: siblings.map(s => ({ id: s.id, sortOrder: s.sortOrder })) });
 }
 
 // === DRAG AND DROP ===
@@ -758,117 +650,64 @@ let dragNoteId = null;
 let dragNoteParentId = null;
 
 function onDragStart(e, noteId, parentId) {
-  dragNoteId = noteId;
-  dragNoteParentId = parentId;
-  e.dataTransfer.effectAllowed = "move";
-  e.dataTransfer.setData("text/plain", noteId);
+  dragNoteId = noteId; dragNoteParentId = parentId;
+  e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", noteId);
   e.target.closest(".ns-item").style.opacity = "0.4";
 }
 
 function onDragEnd(e) {
   e.target.closest(".ns-item").style.opacity = "1";
-  dragNoteId = null;
-  dragNoteParentId = null;
-  // Remove all drop indicators
-  document.querySelectorAll(".drop-above,.drop-below,.drop-into").forEach(el => {
-    el.classList.remove("drop-above","drop-below","drop-into");
-  });
+  dragNoteId = null; dragNoteParentId = null;
+  document.querySelectorAll(".drop-above,.drop-below,.drop-into").forEach(el => el.classList.remove("drop-above","drop-below","drop-into"));
 }
 
 function onDragOver(e, targetId, targetParentId) {
-  e.preventDefault();
-  if (targetId === dragNoteId) return;
+  e.preventDefault(); if (targetId === dragNoteId) return;
   e.dataTransfer.dropEffect = "move";
-  
-  const item = e.target.closest(".ns-item");
-  if (!item) return;
-  
-  // Remove old indicators
-  document.querySelectorAll(".drop-above,.drop-below,.drop-into").forEach(el => {
-    el.classList.remove("drop-above","drop-below","drop-into");
-  });
-  
-  const rect = item.getBoundingClientRect();
-  const y = e.clientY - rect.top;
-  const third = rect.height / 3;
-  
-  if (y < third) {
-    item.classList.add("drop-above");
-  } else if (y > third * 2) {
-    item.classList.add("drop-below");
-  } else {
-    item.classList.add("drop-into"); // Drop as child
-  }
+  const item = e.target.closest(".ns-item"); if (!item) return;
+  document.querySelectorAll(".drop-above,.drop-below,.drop-into").forEach(el => el.classList.remove("drop-above","drop-below","drop-into"));
+  const rect = item.getBoundingClientRect(); const y = e.clientY - rect.top; const third = rect.height / 3;
+  if (y < third) item.classList.add("drop-above");
+  else if (y > third * 2) item.classList.add("drop-below");
+  else item.classList.add("drop-into");
 }
 
 function onDrop(e, targetId, targetParentId) {
-  e.preventDefault();
-  if (!dragNoteId || targetId === dragNoteId) return;
-  
-  const item = e.target.closest(".ns-item");
-  if (!item) return;
-  
-  const rect = item.getBoundingClientRect();
-  const y = e.clientY - rect.top;
-  const third = rect.height / 3;
-  
-  const dragNote = findNoteFlat(dragNoteId);
-  if (!dragNote) return;
-  
-  // Prevent dropping a parent into its own child
-  const descendants = collectDescendants(dragNoteId);
-  if (descendants.includes(targetId)) return;
-  
+  e.preventDefault(); if (!dragNoteId || targetId === dragNoteId) return;
+  const item = e.target.closest(".ns-item"); if (!item) return;
+  const rect = item.getBoundingClientRect(); const y = e.clientY - rect.top; const third = rect.height / 3;
+  const dragNote = findNoteFlat(dragNoteId); if (!dragNote) return;
+  const descendants = collectDescendants(dragNoteId); if (descendants.includes(targetId)) return;
   if (y < third) {
-    // Drop ABOVE target — same parent as target, sort order just before target
     const targetNote = findNoteFlat(targetId);
     dragNote.parentId = targetNote.parentId || "";
-    const siblings = getChildren(dragNote.parentId);
-    const targetIdx = siblings.findIndex(n => n.id === targetId);
     dragNote.sortOrder = (targetNote.sortOrder || 0) - 0.5;
   } else if (y > third * 2) {
-    // Drop BELOW target — same parent as target, sort order just after target
     const targetNote = findNoteFlat(targetId);
     dragNote.parentId = targetNote.parentId || "";
     dragNote.sortOrder = (targetNote.sortOrder || 0) + 0.5;
   } else {
-    // Drop INTO target — becomes child of target
     dragNote.parentId = targetId;
-    const children = getChildren(targetId);
-    dragNote.sortOrder = children.length;
+    dragNote.sortOrder = getChildren(targetId).length;
     expandedNodes[targetId] = true;
   }
-  
-  // Renumber all siblings in the new parent
   const newSiblings = getChildren(dragNote.parentId);
   newSiblings.sort((a,b) => (a.sortOrder||0) - (b.sortOrder||0));
   newSiblings.forEach((s, i) => { s.sortOrder = i; });
-  
-  // Also renumber old parent's children
   if (dragNoteParentId !== dragNote.parentId) {
     const oldSiblings = getChildren(dragNoteParentId || "");
     oldSiblings.sort((a,b) => (a.sortOrder||0) - (b.sortOrder||0));
     oldSiblings.forEach((s, i) => { s.sortOrder = i; });
   }
-  
-  // Remove indicators
-  document.querySelectorAll(".drop-above,.drop-below,.drop-into").forEach(el => {
-    el.classList.remove("drop-above","drop-below","drop-into");
-  });
-  
+  document.querySelectorAll(".drop-above,.drop-below,.drop-into").forEach(el => el.classList.remove("drop-above","drop-below","drop-into"));
   render();
-  
-  // Save the moved note (new parent + sort order) and reorder siblings
   apiPost({ action: "saveNote", note: { id: dragNote.id, parentId: dragNote.parentId, title: dragNote.title, sortOrder: dragNote.sortOrder } });
   const allUpdates = [...getChildren(dragNote.parentId)];
   if (dragNoteParentId !== dragNote.parentId) allUpdates.push(...getChildren(dragNoteParentId || ""));
   apiPost({ action: "reorderNotes", updates: allUpdates.map(n => ({ id: n.id, sortOrder: n.sortOrder })) });
-  
-  dragNoteId = null;
-  dragNoteParentId = null;
+  dragNoteId = null; dragNoteParentId = null;
 }
 
-// Expanded nodes tracker
 let expandedNodes = {};
 function toggleExpand(id) { expandedNodes[id] = !expandedNodes[id]; render(); }
 
@@ -901,20 +740,13 @@ function closeAllPanels(except) {
 
 // === RENDER ===
 function render(force) {
-  // GUARD: Don't re-render notes view while user is actively editing
-  // This prevents the DOM from being rebuilt, which would destroy cursor position and typed text
   if (!force && state.view === "notes") {
     const titleInput = document.getElementById("noteTitleInput");
     const bodyEl = document.getElementById("noteBody");
     const isTyping = (titleInput && document.activeElement === titleInput) || (bodyEl && document.activeElement === bodyEl);
-    if (isTyping) {
-      // Only update the sidebar labels without rebuilding the editor
-      updateSidebarOnly();
-      return;
-    }
+    if (isTyping) { updateSidebarOnly(); return; }
   }
 
-  // Nav tabs
   document.getElementById("navTabs").innerHTML =
     `<button class="nav-tab ${state.view==="notes"?"active":""}" onclick="state.view='notes';updateHash();loadNotesLite();render()">Notes</button>` +
     `<button class="nav-tab ${state.view==="tasks"?"active":""}" onclick="state.view='tasks';updateHash();render()">Tasks</button>` +
@@ -923,7 +755,6 @@ function render(force) {
     `<div id="loadingIndicator" style="display:${state.isLoading?"flex":"none"};align-items:center;"><div style="width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--amber);border-radius:50%;animation:spin 0.8s linear infinite;"></div></div>` +
     `</div>`;
 
-  // Inject spinner animation if not already present
   if (!document.getElementById("spinnerCSS")) {
     const style = document.createElement("style");
     style.id = "spinnerCSS";
@@ -933,7 +764,6 @@ function render(force) {
 
   const app = document.getElementById("app");
   if (!state.loaded) { app.innerHTML='<div class="loading">Loading Cache...</div>'; return; }
-
   if (state.view === "notes") { renderNotes(app); return; }
   if (state.kanbanView) { renderKanban(app); return; }
   renderTasks(app);
@@ -954,13 +784,10 @@ function renderTasks(app) {
   let html = '';
 
   if (state.error) html += `<div class="error-banner">${esc(state.error)}</div>`;
-
-  // Header
   html += `<div class="header"><div class="header-top"><h1 class="title">THE CACHE</h1><div class="header-right">`;
   if (state.saveStatus) html += `<div class="save-status ${state.saveStatus.includes("✓")?"save-ok":"save-err"}">${esc(state.saveStatus)}</div>`;
   html += `<div class="count">${filtered.length} tasks</div></div></div><div class="subtitle">${esc(m.desc)}</div></div>`;
 
-  // Mode bar
   html += '<div class="mode-bar">';
   Object.entries(MODES).forEach(([key, mo]) => {
     const active = state.mode===key;
@@ -969,7 +796,6 @@ function renderTasks(app) {
   });
   html += '</div>';
 
-  // Cat filter
   html += '<div class="cat-bar">';
   html += `<button class="cat-btn ${state.filterCat==="all"?"active":""}" onclick="state.filterCat='all';render()">All</button>`;
   state.categories.forEach(c => {
@@ -977,7 +803,6 @@ function renderTasks(app) {
   });
   html += '</div>';
 
-  // Action buttons
   html += '<div class="top-bar">';
   html += `<button class="btn-add" onclick="closeAllPanels('add');state.showAdd=!state.showAdd;render()">${state.showAdd?"✕ Cancel":"+ Add Task"}</button>`;
   html += `<button class="btn-done" onclick="closeAllPanels('done');state.showDone=!state.showDone;state.expandedDoneId=null;render()">${state.showDone?"Hide Done":"Done ("+state.doneTasks.length+")"}</button>`;
@@ -985,7 +810,6 @@ function renderTasks(app) {
   html += `<button class="kb-toggle" onclick="state.kanbanView=true;render()">▦ Kanban</button>`;
   html += '</div>';
 
-  // Edit Categories
   if (state.showEditCats) {
     html += '<div class="edit-cats"><div class="edit-cats-title">Categories</div><div class="edit-cats-list">';
     state.categories.forEach(c => {
@@ -1004,7 +828,6 @@ function renderTasks(app) {
     html += `<div class="add-cat-row"><input class="input" id="newCatInput" placeholder="Category name" value="${esc(state.newCatName)}" oninput="state.newCatName=this.value" onkeydown="if(event.key==='Enter')addCategory()"><button class="btn-cat-save" onclick="addCategory()">Add</button></div></div>`;
   }
 
-  // Add task form
   if (state.showAdd) {
     html += '<div class="panel">';
     html += `<input class="input" id="addTaskInput" placeholder="What needs to happen?" value="${esc(state.newTask.title)}" oninput="state.newTask.title=this.value" onkeydown="if(event.key==='Enter')addTask()">`;
@@ -1018,7 +841,6 @@ function renderTasks(app) {
     html += '</div><button class="btn-submit" onclick="addTask()">Add to Cache</button></div>';
   }
 
-  // Done list
   if (state.showDone) {
     html += '<div class="done-section"><div class="done-header"><span class="done-label">Completed</span>';
     if (state.doneTasks.length>0) html += '<button class="btn-clear" onclick="clearDone()">Clear all</button>';
@@ -1033,7 +855,6 @@ function renderTasks(app) {
     html += '</div>';
   }
 
-  // Task list
   Object.entries(grouped).forEach(([timeline, items]) => {
     const color = TIMELINE_COLORS[timeline]||"#7a7568";
     html += '<div class="group">';
@@ -1045,12 +866,10 @@ function renderTasks(app) {
       html += `<div class="task-content" onclick="if(state.editingId==='${task.id}')return;state.expandedId=state.expandedId==='${task.id}'?null:'${task.id}';render()">`;
       html += `<div class="task-title">${esc(task.title)}</div>`;
       html += `<div class="task-meta"><span>${esc(task.category)}</span>${task.kanbanCol && task.kanbanCol !== "Unsorted" ? '<span style="color:var(--amber);font-size:10px;">'+esc(task.kanbanCol)+'</span>' : ''}<span class="task-score">P ${task.priority}</span><span style="color:${mi.color}">${mi.icon} ${task.mode}</span></div>`;
-
       if (state.expandedId===task.id && state.editingId!==task.id) {
         html += `<div class="task-expanded"><div class="score-row"><span>Value: ${task.valuable}/10</span><span>Urgency: ${task.urgency}/10</span></div>`;
         html += `<div class="task-actions"><button class="btn-edit" onclick="event.stopPropagation();state.editingId='${task.id}';state.editData=JSON.parse(JSON.stringify(state.tasks.find(t=>t.id==='${task.id}')));render()">Edit task</button><button class="btn-delete" onclick="event.stopPropagation();deleteTask('${task.id}')">Delete</button></div></div>`;
       }
-
       if (state.editingId===task.id && state.editData) {
         const ed = state.editData;
         html += '<div class="task-expanded" onclick="event.stopPropagation()">';
@@ -1086,13 +905,9 @@ let kbDragTaskId = null;
 function renderKanban(app) {
   let html = '';
   if (state.error) html += `<div class="error-banner">${esc(state.error)}</div>`;
-
-  // Header
   html += '<div class="header"><div class="header-top"><h1 class="title">THE CACHE</h1><div class="header-right">';
   html += `<button class="kb-toggle active" onclick="state.kanbanView=false;render()">✕ List View</button>`;
   html += '</div></div><div class="subtitle">Kanban Board</div></div>';
-
-  // Mode bar (same as list view)
   html += '<div class="mode-bar">';
   Object.entries(MODES).forEach(([key, mo]) => {
     const active = state.mode===key;
@@ -1100,58 +915,41 @@ function renderKanban(app) {
     html += `<button class="mode-btn" style="${style}" onclick="state.mode='${key}';render()"><span class="mode-icon">${mo.icon}</span>${mo.label}</button>`;
   });
   html += '</div>';
-
-  // Category filter bar
   html += '<div class="cat-bar">';
   html += `<button class="cat-btn ${state.filterCat==="all"?"active":""}" onclick="state.filterCat='all';render()">All</button>`;
   state.categories.forEach(c => {
     html += `<button class="cat-btn ${state.filterCat===c?"active":""}" onclick="state.filterCat='${esc(c)}';render()">${esc(c.replace("JPPF ",""))}</button>`;
   });
   html += '</div>';
-
-  // Add category button
   html += '<div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;">';
   html += '<input class="input" id="kbNewCatInput" placeholder="New category..." style="max-width:200px;font-size:12px;" onkeydown="if(event.key===\'Enter\')kbAddCategory()">';
   html += '<button class="btn-add" onclick="kbAddCategory()" style="font-size:11px;padding:5px 10px;">+ Category</button>';
   html += '</div>';
-
-  // Filter categories based on selection
   const visibleCats = state.filterCat === "all" ? state.categories : state.categories.filter(c => c === state.filterCat);
-  // Also filter by mode
   const modeFilter = state.mode;
-
-  // Swimlanes — one per visible category
   html += '<div class="kb-board">';
   visibleCats.forEach(cat => {
     const cols = state.kanbanColumns[cat] || ["Unsorted","Not Started","Doing","Finishing","Done"];
     let catTasks = state.tasks.filter(t => t.category === cat);
-    // Apply mode filter
     if (modeFilter !== "all") catTasks = catTasks.filter(t => t.mode === modeFilter);
     const isEditing = state.editingKanbanCat === cat;
-
     html += '<div class="kb-swimlane">';
-    // Swimlane header
     html += '<div class="kb-swim-header">';
     html += `<span class="kb-swim-title">${esc(cat)} <span style="font-weight:normal;color:var(--dim);font-size:10px;">(${catTasks.length})</span></span>`;
     html += `<button class="kb-swim-gear" onclick="state.editingKanbanCat=state.editingKanbanCat==='${esc(cat)}'?null:'${esc(cat)}';render()" title="Edit columns">⚙</button>`;
     html += '</div>';
-
-    // Column editor (shown when gear is clicked)
     if (isEditing) {
-      html += '<div class="kb-col-editor">';
-      html += '<div class="kb-col-editor-title">Columns</div>';
+      html += '<div class="kb-col-editor"><div class="kb-col-editor-title">Columns</div>';
       cols.forEach((col, ci) => {
-        const isFirst = ci === 0;
-        const isLast = ci === cols.length - 1;
-        const locked = isFirst || isLast;
+        const locked = ci === 0 || ci === cols.length - 1;
         html += `<div class="kb-col-item ${locked?"kb-col-locked":""}">`;
         if (locked) {
           html += `<span style="flex:1;">${esc(col)} (locked)</span>`;
         } else {
           html += `<input class="kb-col-input" value="${esc(col)}" onchange="kbRenameCol('${esc(cat)}',${ci},this.value)">`;
-          html += `<button class="kb-col-btn" onclick="kbMoveCol('${esc(cat)}',${ci},-1)" title="Move left">◀</button>`;
-          html += `<button class="kb-col-btn" onclick="kbMoveCol('${esc(cat)}',${ci},1)" title="Move right">▶</button>`;
-          html += `<button class="kb-col-btn" onclick="kbDeleteCol('${esc(cat)}',${ci})" title="Delete" style="color:var(--red);">✕</button>`;
+          html += `<button class="kb-col-btn" onclick="kbMoveCol('${esc(cat)}',${ci},-1)">◀</button>`;
+          html += `<button class="kb-col-btn" onclick="kbMoveCol('${esc(cat)}',${ci},1)">▶</button>`;
+          html += `<button class="kb-col-btn" onclick="kbDeleteCol('${esc(cat)}',${ci})" style="color:var(--red);">✕</button>`;
         }
         html += '</div>';
       });
@@ -1160,8 +958,6 @@ function renderKanban(app) {
       html += `<button class="kb-col-btn" onclick="kbAddCol('${esc(cat)}')" style="color:var(--green);font-size:14px;">+</button>`;
       html += '</div></div>';
     }
-
-    // Columns with cards
     html += '<div class="kb-columns">';
     cols.forEach((col, ci) => {
       const isLast = ci === cols.length - 1;
@@ -1179,16 +975,13 @@ function renderKanban(app) {
     });
     html += '</div></div>';
   });
-
-  // Tasks with no matching category (orphans) — only show in "all" view
   if (state.filterCat === "all") {
     const categorized = new Set(state.categories);
     let orphans = state.tasks.filter(t => !categorized.has(t.category));
     if (modeFilter !== "all") orphans = orphans.filter(t => t.mode === modeFilter);
     if (orphans.length > 0) {
       html += '<div class="kb-swimlane"><div class="kb-swim-header"><span class="kb-swim-title" style="color:var(--red);">Uncategorized ('+orphans.length+')</span></div>';
-      html += '<div class="kb-columns"><div class="kb-col">';
-      html += '<div class="kb-col-header">Tasks</div>';
+      html += '<div class="kb-columns"><div class="kb-col"><div class="kb-col-header">Tasks</div>';
       orphans.forEach(task => {
         const mi = MODES[task.mode] || MODES.mind;
         html += `<div class="kb-card"><div class="kb-card-title">${esc(task.title)}</div>`;
@@ -1197,113 +990,59 @@ function renderKanban(app) {
       html += '</div></div></div>';
     }
   }
-
   html += '</div>';
   html += '<div class="footer">Synced with Google Sheets · Kanban View</div>';
   app.innerHTML = html;
 }
 
-// Kanban drag-and-drop
-function kbDragStart(e, taskId) {
-  kbDragTaskId = taskId;
-  e.dataTransfer.effectAllowed = "move";
-  e.target.classList.add("kb-dragging");
-}
-
-function kbDragEnd(e) {
-  e.target.classList.remove("kb-dragging");
-  kbDragTaskId = null;
-  document.querySelectorAll(".kb-col-over").forEach(el => el.classList.remove("kb-col-over"));
-}
-
-function kbDragOver(e) {
-  e.preventDefault();
-  e.dataTransfer.dropEffect = "move";
-  const col = e.target.closest(".kb-col");
-  if (col) col.classList.add("kb-col-over");
-}
-
-function kbDragLeave(e) {
-  const col = e.target.closest(".kb-col");
-  if (col) col.classList.remove("kb-col-over");
-}
-
+function kbDragStart(e, taskId) { kbDragTaskId = taskId; e.dataTransfer.effectAllowed = "move"; e.target.classList.add("kb-dragging"); }
+function kbDragEnd(e) { e.target.classList.remove("kb-dragging"); kbDragTaskId = null; document.querySelectorAll(".kb-col-over").forEach(el => el.classList.remove("kb-col-over")); }
+function kbDragOver(e) { e.preventDefault(); e.dataTransfer.dropEffect = "move"; const col = e.target.closest(".kb-col"); if (col) col.classList.add("kb-col-over"); }
+function kbDragLeave(e) { const col = e.target.closest(".kb-col"); if (col) col.classList.remove("kb-col-over"); }
 function kbDrop(e, cat, col) {
   e.preventDefault();
   document.querySelectorAll(".kb-col-over").forEach(el => el.classList.remove("kb-col-over"));
   if (!kbDragTaskId) return;
-
-  const task = state.tasks.find(t => t.id === kbDragTaskId);
-  if (!task) return;
-
+  const task = state.tasks.find(t => t.id === kbDragTaskId); if (!task) return;
   const cols = state.kanbanColumns[cat] || [];
-  const isLastCol = cols.indexOf(col) === cols.length - 1;
-
-  if (isLastCol) {
-    // Dropping in Done column = complete the task
-    completeTask(kbDragTaskId);
-  } else {
-    // Move to new column
-    task.kanbanCol = col;
-    task.category = cat; // In case dragged across swimlanes
-    render();
-    apiPost({ action: "saveKanbanCol", taskId: kbDragTaskId, col: col });
-  }
+  if (cols.indexOf(col) === cols.length - 1) { completeTask(kbDragTaskId); }
+  else { task.kanbanCol = col; task.category = cat; render(); apiPost({ action: "saveKanbanCol", taskId: kbDragTaskId, col: col }); }
   kbDragTaskId = null;
 }
-
-// Kanban column management
 function kbAddCol(cat) {
   const inputId = "kbNewCol_" + cat.replace(/\s/g, '_');
   const input = document.getElementById(inputId);
   if (!input || !input.value.trim()) return;
   const name = input.value.trim();
   const cols = state.kanbanColumns[cat];
-  // Insert before last column (Done)
   cols.splice(cols.length - 1, 0, name);
   render();
   apiPost({ action: "saveKanbanColumns", category: cat, columns: cols });
 }
-
 function kbRenameCol(cat, idx, newName) {
   if (!newName.trim()) return;
   const cols = state.kanbanColumns[cat];
-  const oldName = cols[idx];
-  cols[idx] = newName.trim();
-  // Update tasks that were in the old column
+  const oldName = cols[idx]; cols[idx] = newName.trim();
   state.tasks.forEach(t => { if (t.category === cat && t.kanbanCol === oldName) t.kanbanCol = newName.trim(); });
   render();
   apiPost({ action: "saveKanbanColumns", category: cat, columns: cols });
-  // Update affected tasks
-  state.tasks.filter(t => t.category === cat && t.kanbanCol === newName.trim()).forEach(t => {
-    apiPost({ action: "saveKanbanCol", taskId: t.id, col: newName.trim() });
-  });
+  state.tasks.filter(t => t.category === cat && t.kanbanCol === newName.trim()).forEach(t => { apiPost({ action: "saveKanbanCol", taskId: t.id, col: newName.trim() }); });
 }
-
 function kbMoveCol(cat, idx, dir) {
   const cols = state.kanbanColumns[cat];
   const newIdx = idx + dir;
-  if (newIdx <= 0 || newIdx >= cols.length - 1) return; // Can't move into first or last position
+  if (newIdx <= 0 || newIdx >= cols.length - 1) return;
   [cols[idx], cols[newIdx]] = [cols[newIdx], cols[idx]];
   render();
   apiPost({ action: "saveKanbanColumns", category: cat, columns: cols });
 }
-
 function kbDeleteCol(cat, idx) {
   const cols = state.kanbanColumns[cat];
   const colName = cols[idx];
-  // Move tasks from deleted column back to Unsorted
-  state.tasks.forEach(t => {
-    if (t.category === cat && t.kanbanCol === colName) {
-      t.kanbanCol = "Unsorted";
-      apiPost({ action: "saveKanbanCol", taskId: t.id, col: "Unsorted" });
-    }
-  });
-  cols.splice(idx, 1);
-  render();
+  state.tasks.forEach(t => { if (t.category === cat && t.kanbanCol === colName) { t.kanbanCol = "Unsorted"; apiPost({ action: "saveKanbanCol", taskId: t.id, col: "Unsorted" }); } });
+  cols.splice(idx, 1); render();
   apiPost({ action: "saveKanbanColumns", category: cat, columns: cols });
 }
-
 function kbAddCategory() {
   const input = document.getElementById("kbNewCatInput");
   if (!input || !input.value.trim()) return;
@@ -1311,8 +1050,7 @@ function kbAddCategory() {
   if (state.categories.includes(name)) return;
   state.categories.push(name);
   state.kanbanColumns[name] = ["Unsorted", "Not Started", "Doing", "Finishing", "Done"];
-  input.value = "";
-  render();
+  input.value = ""; render();
   apiPost({ action: "updateCategories", categories: state.categories.join(",") });
   apiPost({ action: "saveKanbanColumns", category: name, columns: state.kanbanColumns[name] });
 }
@@ -1321,27 +1059,18 @@ function renderNotes(app) {
   const sidebarOpen = state.sidebarOpen;
   const noteTree = getNoteTree();
   let html = '';
-
-  // Mobile toggle button
   html += `<button class="ns-toggle" onclick="state.sidebarOpen=!state.sidebarOpen;render()">☰ Notes</button>`;
-
   html += '<div class="notes-container">';
-
-  // Overlay for mobile
   html += `<div class="ns-overlay ${sidebarOpen?'':'hidden'}" onclick="state.sidebarOpen=false;render()"></div>`;
-
-  // Sidebar
   html += `<div class="notes-sidebar ${sidebarOpen?'open':''}">`;
   html += '<div class="ns-header"><span class="ns-title">Notes</span><button class="ns-add" onclick="addNoteToList([])" title="New note">+</button></div>';
   html += renderNoteTreeHTML(noteTree, []);
   html += '</div>';
 
-  // Delete confirmation overlay
   if (state.confirmDeletePath) {
     const delId = state.confirmDeletePath[state.confirmDeletePath.length - 1];
     const delNote = findNoteFlat(delId);
     const name = delNote ? delNote.title : "this note";
-    const childCount = state.notesFlat.filter(n => n.parentId === delId).length;
     const totalDescendants = collectDescendants(delId).length - 1;
     html += '<div style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;z-index:100;">';
     html += '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:24px;max-width:340px;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,0.1);">';
@@ -1354,13 +1083,10 @@ function renderNotes(app) {
     html += '</div></div></div>';
   }
 
-  // Main editor
   html += '<div class="notes-main">';
   const activeNote = getActiveNote();
   if (activeNote) {
     html += `<input class="note-title-input" id="noteTitleInput" value="${esc(activeNote.title)}" oninput="updateNoteField('title',this.value)" onkeydown="if(event.key==='Tab'){event.preventDefault();var b=document.getElementById('noteBody');if(b)b.focus();}" placeholder="Note title">`;
-    
-    // Single unified toolbar — always visible
     html += '<div class="note-toolbar">';
     html += '<select class="tb-select" onchange="document.execCommand(\'fontName\',false,this.value);document.getElementById(\'noteBody\').focus()" title="Font">';
     html += '<option value="EB Garamond, Georgia, serif">Garamond</option>';
@@ -1370,27 +1096,21 @@ function renderNotes(app) {
     html += '<option value="Courier New, monospace">Courier New</option>';
     html += '</select>';
     html += '<select class="tb-select" onchange="document.execCommand(\'fontSize\',false,this.value);document.getElementById(\'noteBody\').focus()" title="Font Size">';
-    html += '<option value="2">Small</option>';
-    html += '<option value="3" selected>Normal</option>';
-    html += '<option value="4">Medium</option>';
-    html += '<option value="5">Large</option>';
-    html += '<option value="6">X-Large</option>';
+    html += '<option value="2">Small</option><option value="3" selected>Normal</option><option value="4">Medium</option><option value="5">Large</option><option value="6">X-Large</option>';
     html += '</select>';
     html += '<div class="tb-sep"></div>';
-    html += '<button onmousedown="event.preventDefault();document.execCommand(\'bold\')" title="Bold (Ctrl+B)"><b>B</b></button>';
-    html += '<button onmousedown="event.preventDefault();document.execCommand(\'italic\')" title="Italic (Ctrl+I)"><i>I</i></button>';
-    html += '<button onmousedown="event.preventDefault();document.execCommand(\'underline\')" title="Underline (Ctrl+U)"><u>U</u></button>';
+    html += '<button onmousedown="event.preventDefault();document.execCommand(\'bold\')" title="Bold"><b>B</b></button>';
+    html += '<button onmousedown="event.preventDefault();document.execCommand(\'italic\')" title="Italic"><i>I</i></button>';
+    html += '<button onmousedown="event.preventDefault();document.execCommand(\'underline\')" title="Underline"><u>U</u></button>';
     html += '<button onmousedown="event.preventDefault();document.execCommand(\'strikeThrough\')" title="Strikethrough"><s>S</s></button>';
     html += '<div class="tb-sep"></div>';
-    html += '<button onmousedown="event.preventDefault();insertLink()" title="Insert Link (Ctrl+K)">🔗</button>';
+    html += '<button onmousedown="event.preventDefault();insertLink()" title="Insert Link">🔗</button>';
     html += '<button onmousedown="event.preventDefault();copyScreenplayFormatted()" title="Copy with formatting">📋</button>';
     html += '<button onmousedown="event.preventDefault();printScreenplay()" title="Print / Save as PDF">🖨</button>';
-    // Screenplay toggle — camera emoji
     html += `<button onmousedown="event.preventDefault();toggleScreenplay()" title="Toggle Screenplay Mode" style="${state.screenplayMode?"background:var(--amber);color:var(--bg);border-color:var(--amber);":""}">🎥</button>`;
     html += '<button onmousedown="event.preventDefault();document.execCommand(\'removeFormat\')" title="Remove Formatting">✕</button>';
     html += '</div>';
-    
-    // Screenplay element bar — only shows when screenplay mode is on
+
     if (state.screenplayMode) {
       html += '<div class="note-toolbar sp-toolbar">';
       html += `<button onmousedown="event.preventDefault();spFormat('action')" class="sp-btn ${state.spCurrentFormat==='action'?'sp-active':''}">Action</button>`;
@@ -1402,7 +1122,7 @@ function renderNotes(app) {
       html += `<span class="sp-current-mode">${state.spCurrentFormat}</span>`;
       html += '</div>';
     }
-    
+
     if (activeNote.content === undefined) {
       html += '<div style="color:var(--dim);font-size:14px;padding:20px 0;">Loading note...</div>';
     } else {
@@ -1415,55 +1135,30 @@ function renderNotes(app) {
   html += '</div></div>';
   app.innerHTML = html;
 
-  // Setup contenteditable placeholder + keyboard shortcuts
   const body = document.getElementById("noteBody");
   if (body) {
     if (!body.innerText.trim()) body.classList.add("empty-placeholder");
     body.addEventListener("focus", () => body.classList.remove("empty-placeholder"));
     body.addEventListener("blur", () => { if (!body.innerText.trim()) body.classList.add("empty-placeholder"); });
-    // Make links clickable — tap/click opens the link
     body.addEventListener("click", (e) => {
       const link = e.target.closest("a");
       if (link && link.href) {
-        // On mobile, first tap selects, second tap should open
-        // Give a brief window to detect double-tap
-        if (link.dataset.tapped) {
-          e.preventDefault();
-          e.stopPropagation();
-          window.open(link.href, "_blank");
-          link.dataset.tapped = "";
-          return;
-        }
+        if (link.dataset.tapped) { e.preventDefault(); e.stopPropagation(); window.open(link.href, "_blank"); link.dataset.tapped = ""; return; }
         link.dataset.tapped = "1";
         setTimeout(() => { link.dataset.tapped = ""; }, 600);
       }
     });
-    // Ctrl/Cmd+click always opens link immediately (desktop)
     body.addEventListener("mousedown", (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.target.closest("a")) {
-        e.preventDefault();
-        window.open(e.target.closest("a").href, "_blank");
-      }
+      if ((e.ctrlKey || e.metaKey) && e.target.closest("a")) { e.preventDefault(); window.open(e.target.closest("a").href, "_blank"); }
     });
-    // Keyboard shortcuts
     body.addEventListener("keydown", (e) => {
-      // Tab — in screenplay mode, cycles formats. Otherwise, insert indent.
       if (e.key === "Tab" && !state.screenplayMode) {
         e.preventDefault();
         document.execCommand("insertHTML", false, '<span style="display:inline-block;width:3.6em;"></span>');
         onNoteBodyInput();
       }
-      // Ctrl+Shift+X = strikethrough
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "x") {
-        e.preventDefault();
-        document.execCommand("strikeThrough");
-        onNoteBodyInput();
-      }
-      // Ctrl+K = insert link
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
-        e.preventDefault();
-        insertLink();
-      }
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "x") { e.preventDefault(); document.execCommand("strikeThrough"); onNoteBodyInput(); }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") { e.preventDefault(); insertLink(); }
     });
   }
 }
@@ -1474,51 +1169,34 @@ function renderNoteTreeHTML(list, parentPath, depth) {
   const maxIndent = 6;
   const indent = Math.min(depth, maxIndent) * 12;
   let html = "";
-
   list.forEach((note, i) => {
     const path = [...parentPath, note.id];
     const pathStr = path.join("|");
     const isActive = state.activePath && state.activePath.join("|") === pathStr;
     const hasChildren = note.children && note.children.length > 0;
     const isExpanded = expandedNodes[note.id];
-
     html += `<div class="ns-item ${isActive?"active":""}" data-note-id="${note.id}" style="padding-left:${12+indent}px" onclick="navByPath('${pathStr}')" draggable="true" ondragstart="onDragStart(event,'${note.id}','${note.parentId||""}')" ondragend="onDragEnd(event)" ondragover="onDragOver(event,'${note.id}','${note.parentId||""}')" ondrop="onDrop(event,'${note.id}','${note.parentId||""}')">`;
-
-    // Expand arrow
-    if (hasChildren) {
-      html += `<span class="ns-item-arrow ${isExpanded?"open":""}" onclick="event.stopPropagation();toggleExpand('${note.id}')">▶</span>`;
-    } else if (depth > 0) {
-      html += '<span style="width:12px;display:inline-block;"></span>';
-    }
-
+    if (hasChildren) html += `<span class="ns-item-arrow ${isExpanded?"open":""}" onclick="event.stopPropagation();toggleExpand('${note.id}')">▶</span>`;
+    else if (depth > 0) html += '<span style="width:12px;display:inline-block;"></span>';
     html += `<span class="ns-item-label">${esc(note.title)}</span>`;
-
     html += '<div class="ns-item-actions">';
     html += `<button class="ns-act-btn" onclick="event.stopPropagation();addNoteToList(pathFromStr('${pathStr}'))" title="Add sub-note">+</button>`;
     html += `<button class="ns-link-btn" onclick="event.stopPropagation();copyLinkByPath('${pathStr}',this)" title="Copy link">🔗</button>`;
     html += `<div class="ns-move-btns"><button class="ns-move-btn" onclick="event.stopPropagation();moveNoteToTop(pathFromStr('${pathStr}'))" title="Move to top">⤒</button><button class="ns-move-btn" onclick="event.stopPropagation();moveNoteToBottom(pathFromStr('${pathStr}'))" title="Move to bottom">⤓</button></div>`;
     html += `<button class="ns-act-btn" onclick="event.stopPropagation();confirmDeleteNote('${pathStr}')" title="Delete">✕</button>`;
     html += '</div></div>';
-
-    // Render children recursively if expanded
-    if (hasChildren && isExpanded) {
-      html += renderNoteTreeHTML(note.children, path, depth + 1);
-    }
+    if (hasChildren && isExpanded) html += renderNoteTreeHTML(note.children, path, depth + 1);
   });
-
   return html;
 }
 
-// Path helpers — convert between pipe-separated string and array
 function pathFromStr(s) { return s.split("|"); }
 function navByPath(s) { navigateToNote(pathFromStr(s)); }
 function copyLinkByPath(s, btn) { copyNoteLink(pathFromStr(s), btn); }
 
 function updateNoteField(field, value) {
-  const note = getActiveNote();
-  if (!note) return;
+  const note = getActiveNote(); if (!note) return;
   note[field] = value;
-  
   if (field === "title") {
     const items = document.querySelectorAll("[data-note-id='" + note.id + "'] .ns-item-label");
     items.forEach(el => { el.textContent = value || "Untitled"; });
@@ -1528,51 +1206,28 @@ function updateNoteField(field, value) {
   }
 }
 
-// Called from contenteditable div's oninput — saves innerHTML (rich text)
 function onNoteBodyInput() {
-  const body = document.getElementById("noteBody");
-  if (!body) return;
-  const note = getActiveNote();
-  if (!note) return;
+  const body = document.getElementById("noteBody"); if (!body) return;
+  const note = getActiveNote(); if (!note) return;
   note.content = body.innerHTML;
   lastLocalContentHash = simpleHash(body.innerHTML);
   saveNoteContentDebounced(note.id);
 }
 
 function insertLink() {
-  const body = document.getElementById("noteBody");
-  if (!body) return;
-  
+  const body = document.getElementById("noteBody"); if (!body) return;
   const sel = window.getSelection();
-  let savedRange = null;
-  let hasSelection = false;
-  if (sel && sel.rangeCount > 0) {
-    savedRange = sel.getRangeAt(0).cloneRange();
-    hasSelection = !sel.isCollapsed;
-  }
-  
+  let savedRange = null, hasSelection = false;
+  if (sel && sel.rangeCount > 0) { savedRange = sel.getRangeAt(0).cloneRange(); hasSelection = !sel.isCollapsed; }
   const url = prompt("Enter URL:", "https://");
   if (!url || url === "https://") return;
-  
   body.focus();
-  if (savedRange) {
-    sel.removeAllRanges();
-    sel.addRange(savedRange);
-  }
-  
-  if (hasSelection) {
-    document.execCommand("createLink", false, url);
-  } else {
-    document.execCommand("insertHTML", false, `<a href="${url}" target="_blank" rel="noopener" contenteditable="false">${esc(url)}</a>&nbsp;`);
-  }
-  
+  if (savedRange) { sel.removeAllRanges(); sel.addRange(savedRange); }
+  if (hasSelection) { document.execCommand("createLink", false, url); }
+  else { document.execCommand("insertHTML", false, `<a href="${url}" target="_blank" rel="noopener" contenteditable="false">${esc(url)}</a>&nbsp;`); }
   setTimeout(() => {
     const links = body.querySelectorAll("a");
-    links.forEach(a => {
-      a.setAttribute("target", "_blank");
-      a.setAttribute("rel", "noopener");
-      a.setAttribute("contenteditable", "false");
-    });
+    links.forEach(a => { a.setAttribute("target", "_blank"); a.setAttribute("rel", "noopener"); a.setAttribute("contenteditable", "false"); });
     onNoteBodyInput();
   }, 50);
 }
@@ -1583,145 +1238,150 @@ const SP_FORMATS = ["action", "character", "dialogue", "paren", "center", "trans
 function toggleScreenplay() {
   state.screenplayMode = !state.screenplayMode;
   state.spCurrentFormat = "action";
-  
-  // Save the mode to the note — save IMMEDIATELY (not debounced) so it persists on refresh
   const note = getActiveNote();
   if (note) {
     note.mode = state.screenplayMode ? "screenplay" : "";
-    // Immediate save — don't wait for debounce
     apiPost({ action: "saveNote", note: { id: note.id, parentId: note.parentId, title: note.title, sortOrder: note.sortOrder, mode: note.mode } });
   }
-  
-  // When switching to screenplay mode, strip all inline font/size styling
-  // so the parent .sp-mode CSS (Courier New 12pt) takes over cleanly
   if (state.screenplayMode) {
     const body = document.getElementById("noteBody");
     if (body) {
-      // Remove <font> tags (created by execCommand fontName/fontSize)
-      body.querySelectorAll("font").forEach(f => {
-        const span = document.createElement("span");
-        span.innerHTML = f.innerHTML;
-        f.replaceWith(span);
-      });
-      // Remove inline font-family and font-size from any element
-      body.querySelectorAll("[style]").forEach(el => {
-        el.style.fontFamily = "";
-        el.style.fontSize = "";
-      });
+      body.querySelectorAll("font").forEach(f => { const span = document.createElement("span"); span.innerHTML = f.innerHTML; f.replaceWith(span); });
+      body.querySelectorAll("[style]").forEach(el => { el.style.fontFamily = ""; el.style.fontSize = ""; });
       if (note) { note.content = body.innerHTML; saveNoteContentDebounced(note.id); }
     }
   }
-  
   render(true);
   const body = document.getElementById("noteBody");
   if (body) body.focus();
 }
 
-// Parenthetical — special: creates () and places cursor inside
 function spFormatParen() {
   state.spCurrentFormat = "paren";
-  const body = document.getElementById("noteBody");
-  if (!body) return;
+  const body = document.getElementById("noteBody"); if (!body) return;
   body.focus();
-  
   const sel = window.getSelection();
   if (!sel || sel.rangeCount === 0) return;
-  
   const node = sel.anchorNode;
   const parentEl = node.nodeType === 3 ? node.parentElement : node;
   let topEl = parentEl;
-  while (topEl && topEl.parentElement !== body) {
-    topEl = topEl.parentElement;
-  }
-  
-  // If current line is empty, transform it into a paren line
+  while (topEl && topEl.parentElement !== body) topEl = topEl.parentElement;
   if (topEl && topEl.parentElement === body && topEl.textContent.trim() === "") {
-    topEl.className = "sp-paren";
-    topEl.innerHTML = "()";
-    // Place cursor between the parens
+    topEl.className = "sp-paren"; topEl.innerHTML = "()";
     const textNode = topEl.firstChild;
     const range = document.createRange();
-    range.setStart(textNode, 1); // After the (
-    range.collapse(true);
-    sel.removeAllRanges();
-    sel.addRange(range);
+    range.setStart(textNode, 1); range.collapse(true);
+    sel.removeAllRanges(); sel.addRange(range);
   } else {
-    // Create new paren line after current
     const newDiv = document.createElement("div");
-    newDiv.className = "sp-paren";
-    newDiv.innerHTML = "()";
-    if (topEl && topEl.parentElement === body) {
-      topEl.after(newDiv);
-    } else {
-      body.appendChild(newDiv);
-    }
+    newDiv.className = "sp-paren"; newDiv.innerHTML = "()";
+    if (topEl && topEl.parentElement === body) topEl.after(newDiv);
+    else body.appendChild(newDiv);
     const textNode = newDiv.firstChild;
     const range = document.createRange();
-    range.setStart(textNode, 1);
-    range.collapse(true);
-    sel.removeAllRanges();
-    sel.addRange(range);
+    range.setStart(textNode, 1); range.collapse(true);
+    sel.removeAllRanges(); sel.addRange(range);
   }
-  
   onNoteBodyInput();
   spUpdateUI("paren");
 }
 
+// ── FIX 1: spFormat — splits multi-BR divs so Tab only affects the cursor's line ──
 function spFormat(type) {
   state.spCurrentFormat = type;
   const body = document.getElementById("noteBody");
   if (!body) return;
   body.focus();
-  
-  // Find the current block element the cursor is in
+
   const sel = window.getSelection();
   if (!sel || sel.rangeCount === 0) return;
-  
+
+  const range = sel.getRangeAt(0);
   const node = sel.anchorNode;
   const parentEl = node.nodeType === 3 ? node.parentElement : node;
-  
+
   // Walk up to find the top-level element (direct child of body)
   let topEl = parentEl;
-  while (topEl && topEl.parentElement !== body) {
-    topEl = topEl.parentElement;
+  while (topEl && topEl.parentElement !== body) topEl = topEl.parentElement;
+
+  // If cursor is directly in body, wrap in a div
+  if (!topEl || topEl === body) {
+    const wrapper = document.createElement("div");
+    wrapper.className = "sp-" + type;
+    if (node.nodeType === 3) { node.parentNode.insertBefore(wrapper, node); wrapper.appendChild(node); }
+    else { wrapper.innerHTML = "<br>"; body.appendChild(wrapper); }
+    const newRange = document.createRange();
+    newRange.selectNodeContents(wrapper); newRange.collapse(false);
+    sel.removeAllRanges(); sel.addRange(newRange);
+    onNoteBodyInput(); spUpdateUI(type); return;
   }
-  
-  if (topEl && topEl.parentElement === body) {
-    // If leaving paren format, strip the ( ) characters
-    if (topEl.classList.contains("sp-paren") && type !== "paren") {
-      let text = topEl.textContent;
-      // Remove leading ( and trailing )
-      text = text.replace(/^\(/, "").replace(/\)$/, "").trim();
-      topEl.textContent = text || "";
-      if (!text) topEl.innerHTML = "<br>";
-      // Reposition cursor at end
-      const range = document.createRange();
-      if (topEl.firstChild) {
-        range.setStart(topEl.firstChild, topEl.firstChild.textContent.length);
+
+  // ── KEY FIX: If the top-level element has <br> children, split it line-by-line ──
+  // Only split unclassed blocks (raw pastes). Already-formatted sp-* elements are single lines.
+  const hasBrChildren = topEl.querySelector("br") !== null;
+  const isRawBlock = !topEl.className.startsWith("sp-");
+
+  if (hasBrChildren && isRawBlock) {
+    // Split into individual divs at each <br>
+    const frag = document.createDocumentFragment();
+    const children = Array.from(topEl.childNodes);
+    let currentDiv = document.createElement("div");
+    currentDiv.className = "sp-action";
+    let cursorDiv = null;
+
+    children.forEach(child => {
+      if (child.nodeName === "BR") {
+        if (currentDiv.childNodes.length === 0) currentDiv.innerHTML = "<br>";
+        frag.appendChild(currentDiv);
+        currentDiv = document.createElement("div");
+        currentDiv.className = "sp-action";
       } else {
-        range.setStart(topEl, 0);
+        // Track which div contains the cursor
+        if (!cursorDiv) {
+          try {
+            if (range.intersectsNode(child) || child === node || child.contains(node)) {
+              cursorDiv = currentDiv;
+            }
+          } catch(e) {}
+        }
+        currentDiv.appendChild(child.cloneNode(true));
       }
-      range.collapse(true);
-      sel.removeAllRanges();
-      sel.addRange(range);
-    }
-    // Transform the existing element — swap the class
-    topEl.className = "sp-" + type;
-  } else {
-    // No block found — create new block
-    const newDiv = document.createElement("div");
-    newDiv.className = "sp-" + type;
-    newDiv.innerHTML = "<br>";
-    body.appendChild(newDiv);
-    const range = document.createRange();
-    range.setStart(newDiv, 0);
-    range.collapse(true);
-    sel.removeAllRanges();
-    sel.addRange(range);
+    });
+    if (currentDiv.childNodes.length === 0) currentDiv.innerHTML = "<br>";
+    frag.appendChild(currentDiv);
+    if (!cursorDiv) cursorDiv = currentDiv; // default to last
+
+    // Apply the requested format ONLY to the cursor's line
+    cursorDiv.className = "sp-" + type;
+
+    topEl.parentNode.replaceChild(frag, topEl);
+
+    // Move cursor to end of the formatted line
+    const newRange = document.createRange();
+    if (cursorDiv.firstChild) { newRange.selectNodeContents(cursorDiv); newRange.collapse(false); }
+    else { newRange.setStart(cursorDiv, 0); newRange.collapse(true); }
+    sel.removeAllRanges(); sel.addRange(newRange);
+
+    onNoteBodyInput(); spUpdateUI(type); return;
   }
-  
-  onNoteBodyInput();
-  spUpdateUI(type);
+
+  // Single-line element — safe to just swap the class
+  // Strip paren brackets if leaving paren format
+  if (topEl.classList.contains("sp-paren") && type !== "paren") {
+    let text = topEl.textContent;
+    text = text.replace(/^\(/, "").replace(/\)$/, "").trim();
+    topEl.textContent = text || "";
+    if (!text) topEl.innerHTML = "<br>";
+    const newRange = document.createRange();
+    if (topEl.firstChild) newRange.setStart(topEl.firstChild, topEl.firstChild.textContent.length);
+    else newRange.setStart(topEl, 0);
+    newRange.collapse(true);
+    sel.removeAllRanges(); sel.addRange(newRange);
+  }
+
+  topEl.className = "sp-" + type;
+
+  onNoteBodyInput(); spUpdateUI(type);
 }
 
 function spUpdateUI(type) {
@@ -1737,152 +1397,74 @@ function spUpdateUI(type) {
 function spCycleFormat() {
   const idx = SP_FORMATS.indexOf(state.spCurrentFormat);
   const next = SP_FORMATS[(idx + 1) % SP_FORMATS.length];
-  if (next === "paren") {
-    spFormatParen();
-  } else {
-    spFormat(next);
-  }
+  if (next === "paren") spFormatParen();
+  else spFormat(next);
 }
 
-// Keyboard handler for screenplay mode
 document.addEventListener("keydown", function(e) {
   if (!state.screenplayMode) return;
   const body = document.getElementById("noteBody");
   if (!body || document.activeElement !== body) return;
-  
-  // Tab = cycle through screenplay formats
-  if (e.key === "Tab") {
-    e.preventDefault();
-    spCycleFormat();
-    return;
-  }
-  
-  // Enter handling
+
+  if (e.key === "Tab") { e.preventDefault(); spCycleFormat(); return; }
+
   if (e.key === "Enter") {
     const sel = window.getSelection();
     if (sel && sel.rangeCount > 0) {
       const node = sel.anchorNode;
       const parentEl = node.nodeType === 3 ? node.parentElement : node;
-      
-      const body = document.getElementById("noteBody");
       let spEl = parentEl;
-      while (spEl && spEl.parentElement !== body) {
-        spEl = spEl.parentElement;
-      }
-      
+      while (spEl && spEl.parentElement !== body) spEl = spEl.parentElement;
       if (spEl && spEl.parentElement === body) {
         const isEmpty = spEl.textContent.trim() === "";
-        
-        // Empty action line (triple-enter) → insert blank spacer
         if (isEmpty && spEl.classList.contains("sp-action")) {
           e.preventDefault();
-          const spacer = document.createElement("div");
-          spacer.className = "sp-action";
-          spacer.innerHTML = "<br>";
+          const spacer = document.createElement("div"); spacer.className = "sp-action"; spacer.innerHTML = "<br>";
           spEl.after(spacer);
-          const range = document.createRange();
-          range.setStart(spacer, 0);
-          range.collapse(true);
-          sel.removeAllRanges();
-          sel.addRange(range);
-          onNoteBodyInput();
-          return;
+          const range = document.createRange(); range.setStart(spacer, 0); range.collapse(true);
+          sel.removeAllRanges(); sel.addRange(range);
+          onNoteBodyInput(); return;
         }
-        
-        // Double-enter (empty line) from ANYTHING else → action
-        if (isEmpty) {
-          e.preventDefault();
-          spEl.remove();
-          spAutoAdvance("action");
-          return;
-        }
-        
-        // Character name + Enter → dialogue
-        if (spEl.classList.contains("sp-character")) {
-          e.preventDefault();
-          spAutoAdvance("dialogue");
-          return;
-        }
-        
-        // Parenthetical + Enter → dialogue (keep the closing paren on current line)
+        if (isEmpty) { e.preventDefault(); spEl.remove(); spAutoAdvance("action"); return; }
+        if (spEl.classList.contains("sp-character")) { e.preventDefault(); spAutoAdvance("dialogue"); return; }
         if (spEl.classList.contains("sp-paren")) {
           e.preventDefault();
-          // Make sure the text ends with )
           const text = spEl.textContent;
-          if (!text.endsWith(")")) {
-            spEl.textContent = text + ")";
-          }
-          spAutoAdvance("dialogue");
-          return;
+          if (!text.endsWith(")")) spEl.textContent = text + ")";
+          spAutoAdvance("dialogue"); return;
         }
-        
-        // Dialogue + Enter → name
-        if (spEl.classList.contains("sp-dialogue")) {
-          e.preventDefault();
-          spAutoAdvance("character");
-          return;
-        }
+        if (spEl.classList.contains("sp-dialogue")) { e.preventDefault(); spAutoAdvance("character"); return; }
       }
     }
   }
-  
-  // Ctrl+1-6 shortcuts
+
   if (e.ctrlKey || e.metaKey) {
     const formatMap = {"1":"action","2":"character","3":"dialogue","4":"paren","5":"center","6":"transition"};
-    if (formatMap[e.key]) {
-      e.preventDefault();
-      if (formatMap[e.key] === "paren") { spFormatParen(); }
-      else { spFormat(formatMap[e.key]); }
-    }
+    if (formatMap[e.key]) { e.preventDefault(); if (formatMap[e.key] === "paren") spFormatParen(); else spFormat(formatMap[e.key]); }
   }
 });
 
 function spAutoAdvance(type) {
   state.spCurrentFormat = type;
-  const body = document.getElementById("noteBody");
-  if (!body) return;
-  
-  const newDiv = document.createElement("div");
-  newDiv.className = "sp-" + type;
-  newDiv.innerHTML = "<br>";
-  
+  const body = document.getElementById("noteBody"); if (!body) return;
+  const newDiv = document.createElement("div"); newDiv.className = "sp-" + type; newDiv.innerHTML = "<br>";
   const sel = window.getSelection();
   let inserted = false;
   if (sel && sel.rangeCount > 0) {
     const node = sel.anchorNode;
     const parentEl = node.nodeType === 3 ? node.parentElement : node;
     let topEl = parentEl;
-    while (topEl && topEl.parentElement !== body) {
-      topEl = topEl.parentElement;
-    }
-    if (topEl && topEl.parentElement === body) {
-      topEl.after(newDiv);
-      inserted = true;
-    }
+    while (topEl && topEl.parentElement !== body) topEl = topEl.parentElement;
+    if (topEl && topEl.parentElement === body) { topEl.after(newDiv); inserted = true; }
   }
-  
-  if (!inserted) {
-    body.appendChild(newDiv);
-  }
-  
-  // Move cursor into the new div
-  const range = document.createRange();
-  range.setStart(newDiv, 0);
-  range.collapse(true);
-  sel.removeAllRanges();
-  sel.addRange(range);
-  
-  onNoteBodyInput();
-  spUpdateUI(type);
+  if (!inserted) body.appendChild(newDiv);
+  const range = document.createRange(); range.setStart(newDiv, 0); range.collapse(true);
+  sel.removeAllRanges(); sel.addRange(range);
+  onNoteBodyInput(); spUpdateUI(type);
 }
 
-// === LIVE CONTENT POLLING (every 3 seconds for active note) ===
-
-// Generate inline-styled HTML for screenplay (used by copy and print)
 function getScreenplayHTML(title) {
-  const body = document.getElementById("noteBody");
-  if (!body) return "";
-  
+  const body = document.getElementById("noteBody"); if (!body) return "";
   const pageCSS = `
     @page { size: letter; margin: 1in 1in 1in 1.5in; }
     body { font-family: "Courier New", Courier, monospace; font-size: 12pt; line-height: 1.0; color: #000; max-width: 6in; margin: 0 auto; }
@@ -1894,50 +1476,30 @@ function getScreenplayHTML(title) {
     .sp-center { display: block; text-align: center; margin: 12pt 0; }
     .sp-transition { display: block; text-align: right; text-transform: uppercase; margin: 12pt 0; }
   `;
-  
   return '<!DOCTYPE html><html><head><meta charset="utf-8"><title>' + esc(title) + '</title><style>' + pageCSS + '</style></head><body><h1>' + esc(title) + '</h1>' + body.innerHTML + '</body></html>';
 }
 
 function copyScreenplayFormatted() {
-  const note = getActiveNote();
-  const title = note ? note.title : "Untitled";
+  const note = getActiveNote(); const title = note ? note.title : "Untitled";
   const html = getScreenplayHTML(title);
-  
-  const body = document.getElementById("noteBody");
-  const plainText = body ? body.innerText : "";
-  
+  const body = document.getElementById("noteBody"); const plainText = body ? body.innerText : "";
   try {
-    const blob = new Blob([html], { type: "text/html" });
-    const textBlob = new Blob([plainText], { type: "text/plain" });
-    const item = new ClipboardItem({
-      "text/html": blob,
-      "text/plain": textBlob
-    });
-    navigator.clipboard.write([item]).then(() => {
-      setSaveDot("#5a7a4a");
-      hideSaveDot();
-    });
+    const blob = new Blob([html], { type: "text/html" }); const textBlob = new Blob([plainText], { type: "text/plain" });
+    const item = new ClipboardItem({ "text/html": blob, "text/plain": textBlob });
+    navigator.clipboard.write([item]).then(() => { setSaveDot("#5a7a4a"); hideSaveDot(); });
   } catch(e) {
     navigator.clipboard.writeText(plainText).catch(() => {
-      const ta = document.createElement("textarea");
-      ta.value = plainText;
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand("copy");
-      document.body.removeChild(ta);
+      const ta = document.createElement("textarea"); ta.value = plainText; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); document.body.removeChild(ta);
     });
   }
 }
 
 function printScreenplay() {
-  const note = getActiveNote();
-  const title = note ? note.title : "Untitled";
+  const note = getActiveNote(); const title = note ? note.title : "Untitled";
   const html = getScreenplayHTML(title);
-  
   const printWindow = window.open("", "_blank");
   if (!printWindow) { alert("Please allow popups to print."); return; }
-  printWindow.document.write(html);
-  printWindow.document.close();
+  printWindow.document.write(html); printWindow.document.close();
   setTimeout(() => { printWindow.print(); }, 300);
 }
 
@@ -1948,107 +1510,67 @@ let livePollingInterval = null;
 function simpleHash(str) {
   if (!str) return "0";
   let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    const c = str.charCodeAt(i);
-    hash = ((hash << 5) - hash) + c;
-    hash |= 0;
-  }
+  for (let i = 0; i < str.length; i++) { const c = str.charCodeAt(i); hash = ((hash << 5) - hash) + c; hash |= 0; }
   return hash.toString();
 }
 
 function startLivePolling() {
   if (livePollingInterval) clearInterval(livePollingInterval);
   livePollingInterval = setInterval(async () => {
-    // Only poll if we're on notes view, have an active note, and NOT currently typing
     if (state.view !== "notes" || !state.activePath || state.activePath.length === 0) return;
     const body = document.getElementById("noteBody");
     const isTyping = body && document.activeElement === body;
-    if (isTyping) return; // Don't poll while typing
-    
-    // Check if we have pending saves
+    if (isTyping) return;
     const activeId = state.activePath[state.activePath.length - 1];
-    if (contentSaveTimers[activeId]) return; // Don't poll while save is pending
-    
-    // Fetch latest content from Google Doc
+    if (contentSaveTimers[activeId]) return;
     const result = await apiCall("action=getNoteContent&noteId=" + activeId);
     if (result.error || result.content === undefined) return;
-    
-    // Compare with local — only update if server has different content
     const serverHash = simpleHash(result.content);
     const localHash = lastLocalContentHash || simpleHash(body ? body.innerHTML : "");
-    
     if (serverHash !== localHash) {
-      // Server has newer content — update local
       const note = state.notesFlat.find(n => n.id === activeId);
       if (note) {
-        note.content = result.content;
-        lastLocalContentHash = serverHash;
-        // Update the editor directly without full re-render (preserves cursor)
-        if (body && document.activeElement !== body) {
-          body.innerHTML = result.content;
-        }
+        note.content = result.content; lastLocalContentHash = serverHash;
+        if (body && document.activeElement !== body) body.innerHTML = result.content;
       }
     }
   }, 3000);
 }
 
-function stopLivePolling() {
-  if (livePollingInterval) { clearInterval(livePollingInterval); livePollingInterval = null; }
-}
+function stopLivePolling() { if (livePollingInterval) { clearInterval(livePollingInterval); livePollingInterval = null; } }
 
 // === URL HASH ROUTING ===
 function updateHash() {
-  if (state.view === "notes" && state.activePath && state.activePath.length > 0) {
-    window.location.hash = "note/" + state.activePath.join("/");
-  } else if (state.view === "tasks") {
-    window.location.hash = "tasks";
-  } else if (state.view === "notes") {
-    window.location.hash = "notes";
-  }
+  if (state.view === "notes" && state.activePath && state.activePath.length > 0) window.location.hash = "note/" + state.activePath.join("/");
+  else if (state.view === "tasks") window.location.hash = "tasks";
+  else if (state.view === "notes") window.location.hash = "notes";
 }
 
 function readHash() {
   const hash = window.location.hash.replace("#", "");
   if (!hash) return;
   const parts = hash.split("/");
-  if (parts[0] === "tasks") {
-    state.view = "tasks";
-  } else if (parts[0] === "note" && parts.length > 1) {
-    state.view = "notes";
-    state.activePath = parts.slice(1);
-    // Auto-expand all ancestors
-    for (let i = 0; i < state.activePath.length; i++) {
-      expandedNodes[state.activePath[i]] = true;
-    }
-  } else if (parts[0] === "notes") {
-    state.view = "notes";
-  }
+  if (parts[0] === "tasks") { state.view = "tasks"; }
+  else if (parts[0] === "note" && parts.length > 1) {
+    state.view = "notes"; state.activePath = parts.slice(1);
+    for (let i = 0; i < state.activePath.length; i++) expandedNodes[state.activePath[i]] = true;
+  } else if (parts[0] === "notes") { state.view = "notes"; }
 }
 
 function navigateToNote(pathArr) {
-  state.activePath = pathArr;
-  state.view = "notes";
-  state.sidebarOpen = false;
-  lastLocalContentHash = "";
-  
-  // Restore screenplay mode from the note's saved mode
+  state.activePath = pathArr; state.view = "notes"; state.sidebarOpen = false; lastLocalContentHash = "";
   if (pathArr && pathArr.length > 0) {
     const noteId = pathArr[pathArr.length - 1];
     const note = state.notesFlat.find(n => n.id === noteId);
     state.screenplayMode = (note && note.mode === "screenplay");
     state.spCurrentFormat = "action";
   }
-  
-  updateHash();
-  render();
+  updateHash(); render();
   if (pathArr && pathArr.length > 0) {
     const noteId = pathArr[pathArr.length - 1];
     const note = state.notesFlat.find(n => n.id === noteId);
-    if (note && note.content === undefined) {
-      loadNoteContent(noteId);
-    } else if (note) {
-      lastLocalContentHash = simpleHash(note.content || "");
-    }
+    if (note && note.content === undefined) loadNoteContent(noteId);
+    else if (note) lastLocalContentHash = simpleHash(note.content || "");
     startLivePolling();
   }
 }
@@ -2069,7 +1591,6 @@ window.addEventListener("hashchange", () => { readHash(); render(); });
 async function init() {
   await loadAll();
   readHash();
-  
   if (state.view === "notes") {
     await loadNotesLite();
     if (state.activePath && state.activePath.length > 0) {
@@ -2081,16 +1602,11 @@ async function init() {
       startLivePolling();
     }
   }
-  
   render();
-  
-  // Background sync for tasks/structure every 15 seconds (not note content — that's handled by live polling)
   setInterval(() => {
     const body = document.getElementById("noteBody");
     const isTyping = body && document.activeElement === body;
-    if (!isTyping) {
-      bgSync();
-    }
+    if (!isTyping) bgSync();
   }, 15000);
 }
 init();
