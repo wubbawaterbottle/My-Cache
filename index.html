@@ -210,6 +210,38 @@ body { background: var(--bg); color: var(--text); font-family: var(--serif); min
   .note-title-input { font-size:18px; }
   .note-body { font-size:15px; }
 }
+
+/* === KANBAN BOARD === */
+.kb-toggle { background:transparent; border:1px solid var(--border); color:var(--dim); padding:5px 12px; border-radius:5px; font-size:11px; cursor:pointer; font-family:var(--mono); transition:all 0.15s; }
+.kb-toggle.active { background:var(--amber); color:var(--bg); border-color:var(--amber); }
+.kb-board { margin-top:16px; }
+.kb-swimlane { margin-bottom:20px; border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+.kb-swim-header { display:flex; align-items:center; justify-content:space-between; padding:8px 14px; background:var(--bg3); border-bottom:1px solid var(--border); }
+.kb-swim-title { font-size:13px; font-family:var(--mono); font-weight:600; color:var(--text); text-transform:uppercase; letter-spacing:1px; }
+.kb-swim-gear { background:transparent; border:none; color:var(--dim); font-size:14px; cursor:pointer; padding:2px 6px; }
+.kb-swim-gear:hover { color:var(--amber); }
+.kb-columns { display:flex; min-height:100px; overflow-x:auto; }
+.kb-col { flex:1; min-width:140px; border-right:1px solid var(--border); padding:8px; display:flex; flex-direction:column; gap:6px; }
+.kb-col:last-child { border-right:none; }
+.kb-col.kb-col-done { opacity:0.45; }
+.kb-col.kb-col-over { background:var(--amber)11; }
+.kb-col-header { font-size:10px; font-family:var(--mono); color:var(--dim); text-transform:uppercase; letter-spacing:1px; margin-bottom:4px; text-align:center; padding-bottom:4px; border-bottom:1px solid var(--border); }
+.kb-card { background:var(--bg2); border:1px solid var(--border); border-radius:6px; padding:8px 10px; cursor:grab; font-size:12px; font-family:var(--serif); transition:box-shadow 0.15s, opacity 0.15s; }
+.kb-card:active { cursor:grabbing; }
+.kb-card.kb-dragging { opacity:0.4; }
+.kb-card-title { color:var(--text); margin-bottom:4px; font-size:13px; }
+.kb-card-meta { display:flex; gap:6px; font-size:10px; font-family:var(--mono); color:var(--dim); }
+.kb-card-priority { color:var(--amber); }
+/* Kanban column editor */
+.kb-col-editor { background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:12px; margin:8px 14px 12px; }
+.kb-col-editor-title { font-size:11px; font-family:var(--mono); color:var(--dim); margin-bottom:8px; text-transform:uppercase; letter-spacing:1px; }
+.kb-col-item { display:flex; align-items:center; gap:6px; padding:4px 0; font-size:12px; font-family:var(--mono); color:var(--text); }
+.kb-col-item.kb-col-locked { color:var(--dim); }
+.kb-col-input { flex:1; background:var(--bg); border:1px solid var(--border); color:var(--text); padding:3px 6px; border-radius:4px; font-size:11px; font-family:var(--mono); }
+.kb-col-btn { background:transparent; border:none; color:var(--dim); font-size:11px; cursor:pointer; padding:2px 4px; }
+.kb-col-btn:hover { color:var(--text); }
+.kb-col-add { display:flex; gap:6px; margin-top:8px; }
+.kb-col-add input { flex:1; }
 </style>
 </head>
 <body>
@@ -239,7 +271,9 @@ let state = {
   newTask:{ title:"", category:"JPPF General", timeline:"This Quarter", valuable:3, urgency:3, mode:"mind" },
   newCatName:"", renamingCat:null, renameCatValue:"",
   saveStatus:"", loaded:false, error:null,
-  // Notes (flat array from Sheet — each note is {id, parentId, title, content, sortOrder, createdAt})
+  // Kanban
+  kanbanView:false, kanbanColumns:{}, editingKanbanCat:null,
+  // Notes
   notesFlat:[], activePath:null, confirmDeletePath:null, sidebarOpen:false,
   noteSaveTimers:{}, notesLiteLoaded:false, isLoading:false, screenplayMode:false, spCurrentFormat:"action",
 };
@@ -336,7 +370,23 @@ async function loadAll() {
   if (data.error) { state.error = "Failed to load: " + data.error; state.loaded = true; setLoading(false); render(); return; }
   state.tasks = data.tasks || [];
   state.doneTasks = data.done || [];
-  if (data.settings && data.settings.categories) state.categories = data.settings.categories.split(",").map(s=>s.trim()).filter(Boolean);
+  if (data.settings) {
+    if (data.settings.categories) state.categories = data.settings.categories.split(",").map(s=>s.trim()).filter(Boolean);
+    // Load kanban column configs per category
+    Object.keys(data.settings).forEach(key => {
+      if (key.startsWith("kanban_")) {
+        const cat = key.replace("kanban_", "");
+        state.kanbanColumns[cat] = data.settings[key].split(",").map(s=>s.trim()).filter(Boolean);
+      }
+    });
+  }
+  // Ensure every category has default kanban columns
+  const defaultCols = ["Unsorted","Not Started","Doing","Finishing","Done"];
+  state.categories.forEach(cat => {
+    if (!state.kanbanColumns[cat]) state.kanbanColumns[cat] = [...defaultCols];
+  });
+  // Ensure every task has a kanbanCol
+  state.tasks.forEach(t => { if (!t.kanbanCol) t.kanbanCol = "Unsorted"; });
   state.loaded = true; state.error = null; setLoading(false); render();
 }
 
@@ -885,6 +935,7 @@ function render(force) {
   if (!state.loaded) { app.innerHTML='<div class="loading">Loading Cache...</div>'; return; }
 
   if (state.view === "notes") { renderNotes(app); return; }
+  if (state.kanbanView) { renderKanban(app); return; }
   renderTasks(app);
 }
 
@@ -931,6 +982,7 @@ function renderTasks(app) {
   html += `<button class="btn-add" onclick="closeAllPanels('add');state.showAdd=!state.showAdd;render()">${state.showAdd?"✕ Cancel":"+ Add Task"}</button>`;
   html += `<button class="btn-done" onclick="closeAllPanels('done');state.showDone=!state.showDone;state.expandedDoneId=null;render()">${state.showDone?"Hide Done":"Done ("+state.doneTasks.length+")"}</button>`;
   html += `<button class="btn-cat" onclick="closeAllPanels('editCats');state.showEditCats=!state.showEditCats;render()">${state.showEditCats?"✕ Close":"Edit Categories"}</button>`;
+  html += `<button class="kb-toggle" onclick="state.kanbanView=true;render()">▦ Kanban</button>`;
   html += '</div>';
 
   // Edit Categories
@@ -992,7 +1044,7 @@ function renderTasks(app) {
       html += `<button class="btn-check" onclick="event.stopPropagation();completeTask('${task.id}')">○</button>`;
       html += `<div class="task-content" onclick="if(state.editingId==='${task.id}')return;state.expandedId=state.expandedId==='${task.id}'?null:'${task.id}';render()">`;
       html += `<div class="task-title">${esc(task.title)}</div>`;
-      html += `<div class="task-meta"><span>${esc(task.category)}</span><span class="task-score">P ${task.priority}</span><span style="color:${mi.color}">${mi.icon} ${task.mode}</span></div>`;
+      html += `<div class="task-meta"><span>${esc(task.category)}</span>${task.kanbanCol && task.kanbanCol !== "Unsorted" ? '<span style="color:var(--amber);font-size:10px;">'+esc(task.kanbanCol)+'</span>' : ''}<span class="task-score">P ${task.priority}</span><span style="color:${mi.color}">${mi.icon} ${task.mode}</span></div>`;
 
       if (state.expandedId===task.id && state.editingId!==task.id) {
         html += `<div class="task-expanded"><div class="score-row"><span>Value: ${task.valuable}/10</span><span>Urgency: ${task.urgency}/10</span></div>`;
@@ -1026,6 +1078,243 @@ function renderTasks(app) {
 
   if (state.showAdd) { const el=document.getElementById("addTaskInput"); if(el)el.focus(); }
   if (state.showEditCats) { const el=document.getElementById("newCatInput"); if(el&&!state.renamingCat)el.focus(); }
+}
+
+// === KANBAN VIEW ===
+let kbDragTaskId = null;
+
+function renderKanban(app) {
+  let html = '';
+  if (state.error) html += `<div class="error-banner">${esc(state.error)}</div>`;
+
+  // Header
+  html += '<div class="header"><div class="header-top"><h1 class="title">THE CACHE</h1><div class="header-right">';
+  html += `<button class="kb-toggle active" onclick="state.kanbanView=false;render()">✕ List View</button>`;
+  html += '</div></div><div class="subtitle">Kanban Board</div></div>';
+
+  // Mode bar (same as list view)
+  html += '<div class="mode-bar">';
+  Object.entries(MODES).forEach(([key, mo]) => {
+    const active = state.mode===key;
+    const style = active ? `background:${mo.color}22;border-color:${mo.color};color:${mo.color}` : "";
+    html += `<button class="mode-btn" style="${style}" onclick="state.mode='${key}';render()"><span class="mode-icon">${mo.icon}</span>${mo.label}</button>`;
+  });
+  html += '</div>';
+
+  // Category filter bar
+  html += '<div class="cat-bar">';
+  html += `<button class="cat-btn ${state.filterCat==="all"?"active":""}" onclick="state.filterCat='all';render()">All</button>`;
+  state.categories.forEach(c => {
+    html += `<button class="cat-btn ${state.filterCat===c?"active":""}" onclick="state.filterCat='${esc(c)}';render()">${esc(c.replace("JPPF ",""))}</button>`;
+  });
+  html += '</div>';
+
+  // Add category button
+  html += '<div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;">';
+  html += '<input class="input" id="kbNewCatInput" placeholder="New category..." style="max-width:200px;font-size:12px;" onkeydown="if(event.key===\'Enter\')kbAddCategory()">';
+  html += '<button class="btn-add" onclick="kbAddCategory()" style="font-size:11px;padding:5px 10px;">+ Category</button>';
+  html += '</div>';
+
+  // Filter categories based on selection
+  const visibleCats = state.filterCat === "all" ? state.categories : state.categories.filter(c => c === state.filterCat);
+  // Also filter by mode
+  const modeFilter = state.mode;
+
+  // Swimlanes — one per visible category
+  html += '<div class="kb-board">';
+  visibleCats.forEach(cat => {
+    const cols = state.kanbanColumns[cat] || ["Unsorted","Not Started","Doing","Finishing","Done"];
+    let catTasks = state.tasks.filter(t => t.category === cat);
+    // Apply mode filter
+    if (modeFilter !== "all") catTasks = catTasks.filter(t => t.mode === modeFilter);
+    const isEditing = state.editingKanbanCat === cat;
+
+    html += '<div class="kb-swimlane">';
+    // Swimlane header
+    html += '<div class="kb-swim-header">';
+    html += `<span class="kb-swim-title">${esc(cat)} <span style="font-weight:normal;color:var(--dim);font-size:10px;">(${catTasks.length})</span></span>`;
+    html += `<button class="kb-swim-gear" onclick="state.editingKanbanCat=state.editingKanbanCat==='${esc(cat)}'?null:'${esc(cat)}';render()" title="Edit columns">⚙</button>`;
+    html += '</div>';
+
+    // Column editor (shown when gear is clicked)
+    if (isEditing) {
+      html += '<div class="kb-col-editor">';
+      html += '<div class="kb-col-editor-title">Columns</div>';
+      cols.forEach((col, ci) => {
+        const isFirst = ci === 0;
+        const isLast = ci === cols.length - 1;
+        const locked = isFirst || isLast;
+        html += `<div class="kb-col-item ${locked?"kb-col-locked":""}">`;
+        if (locked) {
+          html += `<span style="flex:1;">${esc(col)} (locked)</span>`;
+        } else {
+          html += `<input class="kb-col-input" value="${esc(col)}" onchange="kbRenameCol('${esc(cat)}',${ci},this.value)">`;
+          html += `<button class="kb-col-btn" onclick="kbMoveCol('${esc(cat)}',${ci},-1)" title="Move left">◀</button>`;
+          html += `<button class="kb-col-btn" onclick="kbMoveCol('${esc(cat)}',${ci},1)" title="Move right">▶</button>`;
+          html += `<button class="kb-col-btn" onclick="kbDeleteCol('${esc(cat)}',${ci})" title="Delete" style="color:var(--red);">✕</button>`;
+        }
+        html += '</div>';
+      });
+      html += '<div class="kb-col-add">';
+      html += `<input class="kb-col-input" id="kbNewCol_${cat.replace(/\s/g,'_')}" placeholder="New column..." onkeydown="if(event.key==='Enter')kbAddCol('${esc(cat)}')">`;
+      html += `<button class="kb-col-btn" onclick="kbAddCol('${esc(cat)}')" style="color:var(--green);font-size:14px;">+</button>`;
+      html += '</div></div>';
+    }
+
+    // Columns with cards
+    html += '<div class="kb-columns">';
+    cols.forEach((col, ci) => {
+      const isLast = ci === cols.length - 1;
+      const colTasks = catTasks.filter(t => (t.kanbanCol || "Unsorted") === col);
+      html += `<div class="kb-col ${isLast?"kb-col-done":""}" data-cat="${esc(cat)}" data-col="${esc(col)}" ondragover="kbDragOver(event)" ondragleave="kbDragLeave(event)" ondrop="kbDrop(event,'${esc(cat)}','${esc(col)}')">`;
+      html += `<div class="kb-col-header">${esc(col)} (${colTasks.length})</div>`;
+      colTasks.forEach(task => {
+        const mi = MODES[task.mode] || MODES.mind;
+        html += `<div class="kb-card" draggable="true" data-task-id="${task.id}" ondragstart="kbDragStart(event,'${task.id}')" ondragend="kbDragEnd(event)">`;
+        html += `<div class="kb-card-title">${esc(task.title)}</div>`;
+        html += `<div class="kb-card-meta"><span class="kb-card-priority">P${task.priority}</span><span style="color:${mi.color}">${mi.icon}</span><span>${esc(task.timeline)}</span></div>`;
+        html += '</div>';
+      });
+      html += '</div>';
+    });
+    html += '</div></div>';
+  });
+
+  // Tasks with no matching category (orphans) — only show in "all" view
+  if (state.filterCat === "all") {
+    const categorized = new Set(state.categories);
+    let orphans = state.tasks.filter(t => !categorized.has(t.category));
+    if (modeFilter !== "all") orphans = orphans.filter(t => t.mode === modeFilter);
+    if (orphans.length > 0) {
+      html += '<div class="kb-swimlane"><div class="kb-swim-header"><span class="kb-swim-title" style="color:var(--red);">Uncategorized ('+orphans.length+')</span></div>';
+      html += '<div class="kb-columns"><div class="kb-col">';
+      html += '<div class="kb-col-header">Tasks</div>';
+      orphans.forEach(task => {
+        const mi = MODES[task.mode] || MODES.mind;
+        html += `<div class="kb-card"><div class="kb-card-title">${esc(task.title)}</div>`;
+        html += `<div class="kb-card-meta"><span>${esc(task.category)}</span><span class="kb-card-priority">P${task.priority}</span><span style="color:${mi.color}">${mi.icon}</span></div></div>`;
+      });
+      html += '</div></div></div>';
+    }
+  }
+
+  html += '</div>';
+  html += '<div class="footer">Synced with Google Sheets · Kanban View</div>';
+  app.innerHTML = html;
+}
+
+// Kanban drag-and-drop
+function kbDragStart(e, taskId) {
+  kbDragTaskId = taskId;
+  e.dataTransfer.effectAllowed = "move";
+  e.target.classList.add("kb-dragging");
+}
+
+function kbDragEnd(e) {
+  e.target.classList.remove("kb-dragging");
+  kbDragTaskId = null;
+  document.querySelectorAll(".kb-col-over").forEach(el => el.classList.remove("kb-col-over"));
+}
+
+function kbDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = "move";
+  const col = e.target.closest(".kb-col");
+  if (col) col.classList.add("kb-col-over");
+}
+
+function kbDragLeave(e) {
+  const col = e.target.closest(".kb-col");
+  if (col) col.classList.remove("kb-col-over");
+}
+
+function kbDrop(e, cat, col) {
+  e.preventDefault();
+  document.querySelectorAll(".kb-col-over").forEach(el => el.classList.remove("kb-col-over"));
+  if (!kbDragTaskId) return;
+
+  const task = state.tasks.find(t => t.id === kbDragTaskId);
+  if (!task) return;
+
+  const cols = state.kanbanColumns[cat] || [];
+  const isLastCol = cols.indexOf(col) === cols.length - 1;
+
+  if (isLastCol) {
+    // Dropping in Done column = complete the task
+    completeTask(kbDragTaskId);
+  } else {
+    // Move to new column
+    task.kanbanCol = col;
+    task.category = cat; // In case dragged across swimlanes
+    render();
+    apiPost({ action: "saveKanbanCol", taskId: kbDragTaskId, col: col });
+  }
+  kbDragTaskId = null;
+}
+
+// Kanban column management
+function kbAddCol(cat) {
+  const inputId = "kbNewCol_" + cat.replace(/\s/g, '_');
+  const input = document.getElementById(inputId);
+  if (!input || !input.value.trim()) return;
+  const name = input.value.trim();
+  const cols = state.kanbanColumns[cat];
+  // Insert before last column (Done)
+  cols.splice(cols.length - 1, 0, name);
+  render();
+  apiPost({ action: "saveKanbanColumns", category: cat, columns: cols });
+}
+
+function kbRenameCol(cat, idx, newName) {
+  if (!newName.trim()) return;
+  const cols = state.kanbanColumns[cat];
+  const oldName = cols[idx];
+  cols[idx] = newName.trim();
+  // Update tasks that were in the old column
+  state.tasks.forEach(t => { if (t.category === cat && t.kanbanCol === oldName) t.kanbanCol = newName.trim(); });
+  render();
+  apiPost({ action: "saveKanbanColumns", category: cat, columns: cols });
+  // Update affected tasks
+  state.tasks.filter(t => t.category === cat && t.kanbanCol === newName.trim()).forEach(t => {
+    apiPost({ action: "saveKanbanCol", taskId: t.id, col: newName.trim() });
+  });
+}
+
+function kbMoveCol(cat, idx, dir) {
+  const cols = state.kanbanColumns[cat];
+  const newIdx = idx + dir;
+  if (newIdx <= 0 || newIdx >= cols.length - 1) return; // Can't move into first or last position
+  [cols[idx], cols[newIdx]] = [cols[newIdx], cols[idx]];
+  render();
+  apiPost({ action: "saveKanbanColumns", category: cat, columns: cols });
+}
+
+function kbDeleteCol(cat, idx) {
+  const cols = state.kanbanColumns[cat];
+  const colName = cols[idx];
+  // Move tasks from deleted column back to Unsorted
+  state.tasks.forEach(t => {
+    if (t.category === cat && t.kanbanCol === colName) {
+      t.kanbanCol = "Unsorted";
+      apiPost({ action: "saveKanbanCol", taskId: t.id, col: "Unsorted" });
+    }
+  });
+  cols.splice(idx, 1);
+  render();
+  apiPost({ action: "saveKanbanColumns", category: cat, columns: cols });
+}
+
+function kbAddCategory() {
+  const input = document.getElementById("kbNewCatInput");
+  if (!input || !input.value.trim()) return;
+  const name = input.value.trim();
+  if (state.categories.includes(name)) return;
+  state.categories.push(name);
+  state.kanbanColumns[name] = ["Unsorted", "Not Started", "Doing", "Finishing", "Done"];
+  input.value = "";
+  render();
+  apiPost({ action: "updateCategories", categories: state.categories.join(",") });
+  apiPost({ action: "saveKanbanColumns", category: name, columns: state.kanbanColumns[name] });
 }
 
 function renderNotes(app) {
