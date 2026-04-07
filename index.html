@@ -20,14 +20,16 @@
   --serif: 'EB Garamond', Georgia, serif;
 }
 * { margin:0; padding:0; box-sizing:border-box; }
-body { background: var(--bg); color: var(--text); font-family: var(--serif); min-height:100vh; -webkit-font-smoothing:antialiased; }
+body { background: var(--bg); color: var(--text); font-family: var(--serif); height:100vh; overflow:hidden; -webkit-font-smoothing:antialiased; display:flex; flex-direction:column; }
 
 /* === NAV TABS (Tasks / Notes) === */
-.nav-tabs { display:flex; border-bottom:1px solid var(--border); margin-bottom:0; }
+.nav-tabs { display:flex; border-bottom:1px solid var(--border); margin-bottom:0; flex-shrink:0; }
 .nav-tab { flex:1; padding:12px; text-align:center; font-size:14px; font-family:var(--serif); color:var(--dim); cursor:pointer; border-bottom:2px solid transparent; transition:all 0.15s; background:transparent; border-top:none; border-left:none; border-right:none; }
 .nav-tab.active { color:var(--amber); border-bottom-color:var(--amber); }
 
-.container { max-width:900px; margin:0 auto; padding:20px 16px; }
+.container { max-width:900px; margin:0 auto; padding:20px 16px; flex:1; overflow-y:auto; overflow-x:hidden; scrollbar-width:none; -ms-overflow-style:none; width:100%; min-height:0; }
+.container::-webkit-scrollbar { display:none; }
+.container.notes-view { overflow:hidden; display:flex; flex-direction:column; padding-bottom:0; }
 .header { margin-bottom:20px; border-bottom:1px solid var(--border); padding-bottom:14px; }
 .header-top { display:flex; justify-content:space-between; align-items:baseline; }
 .title { font-size:26px; font-weight:400; letter-spacing:6px; color:var(--text3); }
@@ -124,9 +126,16 @@ body { background: var(--bg); color: var(--text); font-family: var(--serif); min
 .error-banner { background:#fef0f0; border:1px solid var(--redborder); color:var(--red); padding:10px 14px; border-radius:6px; margin-bottom:16px; font-size:13px; font-family:var(--mono); }
 
 /* === NOTES SYSTEM === */
-.notes-container { display:flex; gap:0; min-height:70vh; position:relative; }
-.notes-sidebar { width:240px; flex-shrink:0; border-right:1px solid var(--border); padding:12px 0; overflow-y:auto; max-height:calc(100vh - 80px); }
-.notes-main { flex:1; padding:16px 24px; display:flex; flex-direction:column; min-width:0; }
+.notes-container { display:flex; gap:0; position:relative; flex:1; min-height:0; }
+.notes-sidebar { width:240px; flex-shrink:0; border-right:1px solid var(--border); padding:12px 0; overflow-y:auto; scrollbar-width:none; -ms-overflow-style:none; }
+.notes-sidebar::-webkit-scrollbar { display:none; }
+.notes-main { flex:1; padding:16px 24px; display:flex; flex-direction:column; min-width:0; overflow-y:auto; overflow-x:hidden; scrollbar-width:none; -ms-overflow-style:none; }
+.notes-main::-webkit-scrollbar { display:none; }
+
+/* Page number overlays for screenplay mode */
+#pageMarkers { position:absolute; top:0; left:0; right:0; bottom:0; pointer-events:none; overflow:hidden; }
+.sp-page-num { position:absolute; right:4px; font-family:"Courier New", Courier, monospace; font-size:10px; color:var(--dim3); pointer-events:none; z-index:5; background:var(--bg); padding:1px 4px; border-radius:2px; }
+.sp-page-line { position:absolute; left:0; right:0; border-top:1px dashed var(--border); pointer-events:none; z-index:5; opacity:0.5; }
 .ns-header { display:flex; justify-content:space-between; align-items:center; padding:0 12px 10px; border-bottom:1px solid var(--border); margin-bottom:8px; }
 .ns-title { font-size:12px; color:var(--dim); font-family:var(--mono); text-transform:uppercase; letter-spacing:2px; }
 .ns-add { background:transparent; border:none; color:var(--amber); font-size:18px; cursor:pointer; padding:2px 6px; }
@@ -157,7 +166,10 @@ body { background: var(--bg); color: var(--text); font-family: var(--serif); min
 .note-title-input { background:transparent; border:none; color:var(--text3); font-size:22px; font-family:var(--serif); padding:4px 0; margin-bottom:12px; outline:none; border-bottom:1px solid var(--border); }
 
 /* Formatting toolbar */
-.note-toolbar { display:flex; gap:2px; padding:4px 0; margin-bottom:12px; border-bottom:1px solid var(--border); flex-wrap:wrap; align-items:center; }
+/* Sticky toolbar wrapper */
+.note-toolbars-sticky { position:sticky; top:-16px; z-index:10; background:var(--bg); padding-top:16px; padding-bottom:4px; margin-bottom:8px; margin-top:-16px; margin-left:-24px; margin-right:-24px; padding-left:24px; padding-right:24px; }
+.note-toolbar { display:flex; gap:2px; padding:4px 0; margin-bottom:0; border-bottom:1px solid var(--border); flex-wrap:wrap; align-items:center; }
+.note-toolbar:last-child { margin-bottom:0; }
 .note-toolbar button { background:transparent; border:1px solid transparent; color:var(--dim); padding:4px 8px; border-radius:4px; font-size:13px; cursor:pointer; font-family:var(--mono); transition:all 0.1s; min-width:30px; text-align:center; }
 .note-toolbar button:hover { background:var(--bg3); color:var(--text); border-color:var(--border); }
 .note-toolbar button.active { background:var(--bg3); color:var(--amber); border-color:var(--border2); }
@@ -209,6 +221,8 @@ body { background: var(--bg); color: var(--text); font-family: var(--serif); min
   .notes-main { padding:8px 4px; }
   .note-title-input { font-size:18px; }
   .note-body { font-size:15px; }
+  .note-toolbars-sticky { top:-8px; padding-top:8px; margin-top:-8px; margin-left:-4px; margin-right:-4px; padding-left:4px; padding-right:4px; }
+  .sp-page-num { right:2px; font-size:8px; }
 }
 
 /* === KANBAN BOARD === */
@@ -273,7 +287,7 @@ let state = {
   saveStatus:"", loaded:false, error:null,
   kanbanView:false, kanbanColumns:{}, editingKanbanCat:null,
   notesFlat:[], activePath:null, confirmDeletePath:null, sidebarOpen:false,
-  noteSaveTimers:{}, notesLiteLoaded:false, isLoading:false, screenplayMode:false, spCurrentFormat:"action",
+  noteSaveTimers:{}, notesLiteLoaded:false, isLoading:false, screenplayMode:false, spCurrentFormat:"action", showPageNumbers:false,
 };
 
 // === JSONP API ===
@@ -732,6 +746,8 @@ function render(force) {
 
   const app = document.getElementById("app");
   if (!state.loaded) { app.innerHTML='<div class="loading">Loading Cache...</div>'; return; }
+  // Toggle layout mode: notes view needs flex fill, tasks view needs scroll
+  if (state.view === "notes") { app.classList.add("notes-view"); } else { app.classList.remove("notes-view"); }
   if (state.view === "notes") { renderNotes(app); return; }
   if (state.kanbanView) { renderKanban(app); return; }
   renderTasks(app);
@@ -1027,6 +1043,8 @@ function renderNotes(app) {
   const activeNote = getActiveNote();
   if (activeNote) {
     html += `<input class="note-title-input" id="noteTitleInput" value="${esc(activeNote.title)}" oninput="updateNoteField('title',this.value)" onkeydown="if(event.key==='Tab'){event.preventDefault();var b=document.getElementById('noteBody');if(b)b.focus();}" placeholder="Note title">`;
+    // Sticky toolbar wrapper — stays at top when scrolling
+    html += '<div class="note-toolbars-sticky">';
     html += '<div class="note-toolbar">';
     html += '<select class="tb-select" onchange="document.execCommand(\'fontName\',false,this.value);document.getElementById(\'noteBody\').focus()" title="Font">';
     html += '<option value="EB Garamond, Georgia, serif">Garamond</option><option value="Georgia, serif">Georgia</option><option value="Times New Roman, serif">Times New Roman</option><option value="Arial, sans-serif">Arial</option><option value="Courier New, monospace">Courier New</option></select>';
@@ -1042,6 +1060,7 @@ function renderNotes(app) {
     html += '<button onmousedown="event.preventDefault();copyScreenplayFormatted()" title="Copy with formatting">📋</button>';
     html += '<button onmousedown="event.preventDefault();printScreenplay()" title="Print / Save as PDF">🖨</button>';
     html += `<button onmousedown="event.preventDefault();toggleScreenplay()" title="Toggle Screenplay Mode" style="${state.screenplayMode?"background:var(--amber);color:var(--bg);border-color:var(--amber);":""}">🎥</button>`;
+    html += `<button onmousedown="event.preventDefault();togglePageNumbers()" title="Toggle page numbers" style="${state.showPageNumbers?"background:var(--bg3);color:var(--amber);border-color:var(--border2);":""}">#</button>`;
     html += '<button onmousedown="event.preventDefault();document.execCommand(\'removeFormat\')" title="Remove Formatting">✕</button>';
     html += '</div>';
     if (state.screenplayMode) {
@@ -1055,11 +1074,17 @@ function renderNotes(app) {
       html += `<span class="sp-current-mode">${state.spCurrentFormat}</span>`;
       html += '</div>';
     }
+    html += '</div>'; // close .note-toolbars-sticky
     if (activeNote.content === undefined) {
       html += '<div style="color:var(--dim);font-size:14px;padding:20px 0;">Loading note...</div>';
     } else {
       const spClass = state.screenplayMode ? " sp-mode" : "";
+      html += '<div style="position:relative;" id="noteBodyWrapper">';
       html += `<div class="note-body${spClass}" id="noteBody" contenteditable="true" oninput="onNoteBodyInput()" data-placeholder="${state.screenplayMode?"INT. LOCATION - DAY":"Start writing..."}">${activeNote.content||""}</div>`;
+      if (state.showPageNumbers) {
+        html += '<div id="pageMarkers"></div>';
+      }
+      html += '</div>';
     }
   } else {
     html += '<div class="note-empty">Select a note or click + to create one</div>';
@@ -1091,6 +1116,10 @@ function renderNotes(app) {
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "x") { e.preventDefault(); document.execCommand("strikeThrough"); onNoteBodyInput(); }
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") { e.preventDefault(); insertLink(); }
     });
+    // Update page markers after render
+    if (state.showPageNumbers) {
+      setTimeout(updatePageMarkers, 100);
+    }
   }
 }
 
@@ -1137,6 +1166,7 @@ function onNoteBodyInput() {
   note.content = body.innerHTML;
   lastLocalContentHash = simpleHash(body.innerHTML);
   saveNoteContentDebounced(note.id);
+  schedulePageMarkerUpdate();
 }
 
 function insertLink() {
@@ -1389,6 +1419,52 @@ function spAutoAdvance(type) {
   const range = document.createRange(); range.setStart(newDiv, 0); range.collapse(true);
   sel.removeAllRanges(); sel.addRange(range);
   onNoteBodyInput(); spUpdateUI(type);
+}
+
+// === PAGE NUMBER OVERLAYS ===
+function togglePageNumbers() {
+  state.showPageNumbers = !state.showPageNumbers;
+  render(true);
+  if (state.showPageNumbers) {
+    setTimeout(updatePageMarkers, 100);
+  }
+}
+
+// Page height approximations:
+// Screenplay (Courier 12pt, 1.0 line-height): ~830px per printed page
+// Regular notes (serif 16px, 1.7 line-height): ~900px per printed page
+const SP_PAGE_HEIGHT_PX = 830;
+const NORMAL_PAGE_HEIGHT_PX = 900;
+
+function updatePageMarkers() {
+  const body = document.getElementById("noteBody");
+  const container = document.getElementById("pageMarkers");
+  if (!body || !container || !state.showPageNumbers) {
+    if (container) container.innerHTML = "";
+    return;
+  }
+
+  const pageHeight = state.screenplayMode ? SP_PAGE_HEIGHT_PX : NORMAL_PAGE_HEIGHT_PX;
+  const bodyHeight = body.scrollHeight;
+  const totalPages = Math.max(1, Math.ceil(bodyHeight / pageHeight));
+  let html = "";
+
+  for (let p = 1; p <= totalPages; p++) {
+    const topPx = (p - 1) * pageHeight;
+    html += `<div class="sp-page-num" style="top:${topPx}px;">${p}.</div>`;
+    if (p > 1) {
+      html += `<div class="sp-page-line" style="top:${topPx}px;"></div>`;
+    }
+  }
+  container.innerHTML = html;
+}
+
+// Recalculate page markers when content changes (debounced)
+let pageMarkerTimer = null;
+function schedulePageMarkerUpdate() {
+  if (!state.showPageNumbers) return;
+  if (pageMarkerTimer) clearTimeout(pageMarkerTimer);
+  pageMarkerTimer = setTimeout(updatePageMarkers, 500);
 }
 
 // === LIVE CONTENT POLLING ===
